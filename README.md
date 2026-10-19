@@ -57,3 +57,16 @@ uint32 に正規化します（2^32 差のシードは同じ系列です）。
 プリセット・スライダー・再生成操作・複数衝撃点の編集は Phase 3、表現品質の調整は
 Phase 4、PNG書き出しは Phase 5 で実装予定です。
 最大画像サイズの実機検証とキーボードによる衝撃点指定は今後の課題です。
+
+## GitHub Pages への公開
+
+GitHub の Settings → Pages → Build and deployment → Source を **GitHub Actions** に設定します。
+`main` への push ごとに `.github/workflows/deploy-pages.yml` がテストとビルドを実行し、
+`dist` を公開します。設定変更後は Actions の「Deploy GitHub Pages」から
+「Run workflow」を実行して再公開することもできます。
+
+公開URL: https://tokimeki-marinosuke.github.io/mirror-crack-generator/
+
+Vite の `base` は `/mirror-crack-generator/` に設定しています。
+ソースの `index.html` を直接配信せず、必ずビルド済み `dist` を配信してください。
+ローカルの開発・プレビューでも `/mirror-crack-generator/` を開きます。
