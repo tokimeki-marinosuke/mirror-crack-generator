@@ -1,5 +1,5 @@
 import type { Impact } from '../state/editorState';
-import { renderCracks } from './renderCracks';
+import { renderImpacts } from './renderImpacts';
 import { containRect, imageToScreen, type Rect } from '../core/geometry';
 
 export function renderPreview(canvas: HTMLCanvasElement, image: HTMLImageElement | null,
@@ -19,7 +19,7 @@ export function renderPreview(canvas: HTMLCanvasElement, image: HTMLImageElement
   ctx.save();
   ctx.translate(rect.left, rect.top);
   ctx.scale(rect.width / size.width, rect.height / size.height);
-  for (const impact of impacts) renderCracks(ctx, impact.pattern, size, { ...impact.params, preset: impact.preset });
+  renderImpacts(ctx, impacts, size);
   ctx.restore();
   ctx.save();
   ctx.beginPath();

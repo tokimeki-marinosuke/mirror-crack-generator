@@ -1,3 +1,4 @@
+import { downloadPng, exportFileName, exportPng, type ExportMode } from '../image/exportPng';
 import { containRect, imageToScreen, screenToImage, type Point } from '../core/geometry';
 import { loadImage } from '../image/loadImage';
 import { renderPreview } from '../render/preview';
@@ -17,7 +18,7 @@ type Mode = 'add' | 'move';
 
 export function mountEditor(root: HTMLElement): void {
   root.innerHTML = `
-    <header><p class="eyebrow">IMAGE WORKSPACE · PHASE 4</p><h1>Mirror Crack Generator</h1>
+    <header><p class="eyebrow">IMAGE WORKSPACE · PHASE 5</p><h1>Mirror Crack Generator</h1>
     <p>衝撃点を追加し、選択した点ごとに亀裂を調整できます。</p></header>
     <main><section class="panel"><h2>画像</h2>
       <label class="upload">画像を選択<input id="image-file" type="file" accept="image/png,image/jpeg,image/webp"></label>
@@ -32,6 +33,11 @@ export function mountEditor(root: HTMLElement): void {
       <button type="button" id="delete-impact" disabled>選択した衝撃点を削除</button>
       <p class="hint">追加モードで画像をクリックすると追加。マーカーをクリックすると選択、ドラッグすると移動できます。移動モードではクリック先へ選択点を移します。</p>
       <p class="hint">画像はブラウザ内で処理され、サーバーへ送信されません。</p>
+      <hr><h2>PNG出力</h2>
+      <button type="button" id="export-composite" disabled>合成PNGを保存</button>
+      <button type="button" id="export-cracks" disabled>亀裂のみPNGを保存</button>
+      <p class="hint">元画像の解像度で保存します。マーカーは含めません。亀裂のみPNGは背景が透明です。</p>
+      <p id="export-status" role="status"></p>
     </section><section class="workspace" aria-label="画像ドロップ領域">
       <div class="stage"><canvas aria-label="画像プレビュー。クリックで衝撃点を追加、マーカーをドラッグして移動"></canvas>
       <p class="placeholder">ここに画像をドロップ<br><span>または「画像を選択」から開く</span></p></div>
@@ -61,6 +67,13 @@ export function mountEditor(root: HTMLElement): void {
   let state: EditorState | null = null;
   let mode: Mode = 'add';
   let request = 0;
+  let imageName = 'image';
+  let loading = false;
+  let exporting = false;
+  function syncExportControls(): void {
+    get<HTMLButtonElement>('#export-composite').disabled = !image || loading || exporting;
+    get<HTMLButtonElement>('#export-cracks').disabled = !image || loading || exporting;
+  }
   let drag: { pointerId: number; start: Point; origin: Point; moved: boolean } | null = null;
 
   function redraw(): void {
@@ -93,6 +106,7 @@ export function mountEditor(root: HTMLElement): void {
       }
       status.textContent = `衝撃点 ${active.id} / ${state!.impacts.length}点 · シード ${active.seed} · ${active.pattern.segments.length}線分`;
     } else status.textContent = image ? '追加モードで画像上をクリックしてください。' : '画像を読み込むとプレビューが表示されます。';
+    syncExportControls();
     redraw();
   }
   function edit(action: () => void): void {
@@ -102,13 +116,18 @@ export function mountEditor(root: HTMLElement): void {
   async function open(files: FileList | null): Promise<void> {
     if (!files?.length) return;
     const current = ++request;
-    if (files.length !== 1) { status.textContent = '画像は1枚ずつ選択してください。'; return; }
+    if (files.length !== 1) {
+      loading = false; syncExportControls();
+      status.textContent = '画像は1枚ずつ選択してください。'; return;
+    }
     const file = files[0];
+    loading = true; syncExportControls();
     status.textContent = '画像を読み込んでいます…';
     try {
       const next = await loadImage(file);
       if (current !== request) return;
-      image = next;
+      image = next; imageName = file.name;
+      get('#export-status').textContent = '';
       state = new EditorState({ width: next.naturalWidth, height: next.naturalHeight });
       mode = 'add'; drag = null;
       get<HTMLElement>('.metadata').textContent = `${file.name} · ${next.naturalWidth} × ${next.naturalHeight} px`;
@@ -116,8 +135,28 @@ export function mountEditor(root: HTMLElement): void {
       refresh();
     } catch (error) {
       if (current === request) status.textContent = error instanceof Error ? error.message : '画像を読み込めません。';
+    } finally {
+      if (current === request) { loading = false; syncExportControls(); }
     }
   }
+  async function save(mode: ExportMode): Promise<void> {
+    if (!image || !state || loading || exporting) return;
+    const source = image;
+    const impacts = state.impacts;
+    const filename = exportFileName(imageName, mode);
+    const feedback = get<HTMLElement>('#export-status');
+    exporting = true; syncExportControls();
+    feedback.textContent = 'PNGを作成しています…';
+    try {
+      const blob = await exportPng(source, impacts, mode);
+      downloadPng(blob, filename);
+      feedback.textContent = `${filename} の保存を開始しました（${source.naturalWidth} × ${source.naturalHeight}px）。`;
+    } catch (error) {
+      feedback.textContent = error instanceof Error ? error.message : 'PNGの保存に失敗しました。';
+    } finally { exporting = false; syncExportControls(); }
+  }
+  get('#export-composite').addEventListener('click', () => { void save('composite'); });
+  get('#export-cracks').addEventListener('click', () => { void save('cracks'); });
   input.addEventListener('change', () => { void open(input.files); input.value = ''; });
   window.addEventListener('dragover', event => event.preventDefault());
   window.addEventListener('drop', event => event.preventDefault());
