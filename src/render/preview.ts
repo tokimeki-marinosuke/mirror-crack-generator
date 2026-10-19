@@ -1,7 +1,9 @@
+import type { CrackPattern } from '../core/generateCracks';
+import { renderCracks } from './renderCracks';
 import { containRect, imageToScreen, type Point, type Rect } from '../core/geometry';
 
 export function renderPreview(canvas: HTMLCanvasElement, image: HTMLImageElement | null,
-  impact: Point | null): Rect | null {
+  impact: Point | null, pattern: CrackPattern | null = null): Rect | null {
   const bounds = canvas.getBoundingClientRect();
   if (bounds.width <= 0 || bounds.height <= 0) return null;
   const dpr = window.devicePixelRatio || 1;
@@ -14,6 +16,13 @@ export function renderPreview(canvas: HTMLCanvasElement, image: HTMLImageElement
   const size = { width: image.naturalWidth, height: image.naturalHeight };
   const rect = containRect(size, { left: 0, top: 0, width: bounds.width, height: bounds.height });
   ctx.drawImage(image, rect.left, rect.top, rect.width, rect.height);
+  if (pattern) {
+    ctx.save();
+    ctx.translate(rect.left, rect.top);
+    ctx.scale(rect.width / size.width, rect.height / size.height);
+    renderCracks(ctx, pattern, size);
+    ctx.restore();
+  }
   if (impact) {
     const p = imageToScreen(impact, size, rect);
     ctx.save();

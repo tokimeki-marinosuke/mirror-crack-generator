@@ -1,10 +1,11 @@
+import { generateCracks, type CrackPattern } from '../core/generateCracks';
 import { containRect, screenToImage, type Point } from '../core/geometry';
 import { loadImage } from '../image/loadImage';
 import { renderPreview } from '../render/preview';
 
 export function mountEditor(root: HTMLElement): void {
   root.innerHTML = `
-    <header><p class="eyebrow">IMAGE WORKSPACE · PHASE 1</p><h1>Mirror Crack Generator</h1>
+    <header><p class="eyebrow">IMAGE WORKSPACE · PHASE 2</p><h1>Mirror Crack Generator</h1>
     <p>画像を読み込み、衝撃点を指定してください。</p></header>
     <main><section class="panel"><h2>画像</h2>
       <label class="upload">画像を選択<input type="file" accept="image/png,image/jpeg,image/webp"></label>
@@ -27,9 +28,11 @@ export function mountEditor(root: HTMLElement): void {
   const status = root.querySelector<HTMLElement>('.status')!;
   let image: HTMLImageElement | null = null;
   let impact: Point | null = null;
+  let pattern: CrackPattern | null = null;
+  const seed = 1;
   let request = 0;
   function redraw(): void {
-    try { renderPreview(canvas, image, impact); }
+    try { renderPreview(canvas, image, impact, pattern); }
     catch { status.textContent = 'プレビューを描画できません。小さい画像または別のブラウザをお試しください。'; }
   }
   async function open(files: FileList | null): Promise<void> {
@@ -41,7 +44,7 @@ export function mountEditor(root: HTMLElement): void {
     try {
       const next = await loadImage(file);
       if (current !== request) return;
-      image = next; impact = null;
+      image = next; impact = null; pattern = null;
       metadata.textContent = `${file.name} · ${next.naturalWidth} × ${next.naturalHeight} px`;
       coordinates.textContent = '未指定';
       placeholder.hidden = true;
@@ -66,9 +69,10 @@ export function mountEditor(root: HTMLElement): void {
     const rect = containRect(size, canvas.getBoundingClientRect());
     const point = screenToImage({ x: event.clientX, y: event.clientY }, size, rect);
     if (!point) return;
+    pattern = generateCracks(size, point, seed);
     impact = point;
     coordinates.textContent = `X: ${point.x.toFixed(2)} / Y: ${point.y.toFixed(2)} px`;
-    status.textContent = '衝撃点を指定しました（元画像座標）。';
+    status.textContent = `シード ${seed} · ${pattern.segments.length} 線分（元画像座標）`;
     redraw();
   });
   new ResizeObserver(redraw).observe(stage);

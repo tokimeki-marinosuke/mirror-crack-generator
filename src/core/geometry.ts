@@ -36,3 +36,33 @@ export function imageToScreen(point: Point, image: Size, rect: Rect): Point {
   return { x: rect.left + point.x * rect.width / image.width,
     y: rect.top + point.y * rect.height / image.height };
 }
+
+export type Segment = { start: Point; end: Point };
+
+/** Liang–Barsky: 端点を個別に丸めず、線と画像矩形の交点を求める。 */
+export function clipSegment(segment: Segment, size: Size): Segment | null {
+  validate(size);
+  const { start, end } = segment;
+  if (![start.x, start.y, end.x, end.y].every(Number.isFinite)) {
+    throw new Error('線分の座標は有限数で指定してください。');
+  }
+  const dx = end.x - start.x;
+  const dy = end.y - start.y;
+  let enter = 0;
+  let exit = 1;
+  for (const [p, q] of [[-dx, start.x], [dx, size.width - start.x],
+    [-dy, start.y], [dy, size.height - start.y]]) {
+    if (p === 0) { if (q < 0) return null; continue; }
+    const t = q / p;
+    if (p < 0) enter = Math.max(enter, t);
+    else exit = Math.min(exit, t);
+    if (enter > exit) return null;
+  }
+  // 浮動小数点演算による境界の微小なはみ出しを抑える。
+  const at = (t: number): Point => ({
+    x: Math.max(0, Math.min(size.width, (t === 0 ? start.x : t === 1 ? end.x : start.x + t * dx))),
+    y: Math.max(0, Math.min(size.height, (t === 0 ? start.y : t === 1 ? end.y : start.y + t * dy))),
+  });
+  const clipped = { start: at(enter), end: at(exit) };
+  return clipped.start.x === clipped.end.x && clipped.start.y === clipped.end.y ? null : clipped;
+}
