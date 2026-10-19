@@ -2,13 +2,14 @@ import type { CrackPattern } from '../core/generateCracks';
 import type { Size } from '../core/geometry';
 
 /** 元画像座標で描画する。プレビュー用の変換は呼び出し側が担当。 */
-export function renderCracks(ctx: CanvasRenderingContext2D, pattern: CrackPattern, size: Size): void {
+export function renderCracks(ctx: CanvasRenderingContext2D, pattern: CrackPattern, size: Size, style: { lineWidth: number; opacity: number }): void {
   ctx.save();
   ctx.beginPath();
   ctx.rect(0, 0, size.width, size.height);
   ctx.clip();
-  ctx.strokeStyle = 'rgba(240, 248, 255, 0.9)';
-  ctx.lineWidth = 1.5;
+  ctx.strokeStyle = '#f0f8ff';
+  ctx.globalAlpha = style.opacity / 100;
+  ctx.lineWidth = style.lineWidth;
   ctx.lineCap = 'round';
   ctx.lineJoin = 'round';
   ctx.beginPath();

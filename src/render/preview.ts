@@ -1,9 +1,9 @@
-import type { CrackPattern } from '../core/generateCracks';
+import type { Impact } from '../state/editorState';
 import { renderCracks } from './renderCracks';
-import { containRect, imageToScreen, type Point, type Rect } from '../core/geometry';
+import { containRect, imageToScreen, type Rect } from '../core/geometry';
 
 export function renderPreview(canvas: HTMLCanvasElement, image: HTMLImageElement | null,
-  impact: Point | null, pattern: CrackPattern | null = null): Rect | null {
+  impacts: readonly Impact[], selectedId: number | null): Rect | null {
   const bounds = canvas.getBoundingClientRect();
   if (bounds.width <= 0 || bounds.height <= 0) return null;
   const dpr = window.devicePixelRatio || 1;
@@ -16,29 +16,31 @@ export function renderPreview(canvas: HTMLCanvasElement, image: HTMLImageElement
   const size = { width: image.naturalWidth, height: image.naturalHeight };
   const rect = containRect(size, { left: 0, top: 0, width: bounds.width, height: bounds.height });
   ctx.drawImage(image, rect.left, rect.top, rect.width, rect.height);
-  if (pattern) {
-    ctx.save();
-    ctx.translate(rect.left, rect.top);
-    ctx.scale(rect.width / size.width, rect.height / size.height);
-    renderCracks(ctx, pattern, size);
-    ctx.restore();
-  }
-  if (impact) {
-    const p = imageToScreen(impact, size, rect);
-    ctx.save();
+  ctx.save();
+  ctx.translate(rect.left, rect.top);
+  ctx.scale(rect.width / size.width, rect.height / size.height);
+  for (const impact of impacts) renderCracks(ctx, impact.pattern, size, impact.params);
+  ctx.restore();
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(rect.left, rect.top, rect.width, rect.height);
+  ctx.clip();
+  for (const impact of impacts) {
+    const p = imageToScreen(impact.origin, size, rect);
+    const selected = impact.id === selectedId;
+    ctx.strokeStyle = selected ? '#5ff5d2' : '#ffcf77';
+    ctx.lineWidth = selected ? 2 : 1.5;
+    ctx.fillStyle = '#151b25';
     ctx.beginPath();
-    ctx.rect(rect.left, rect.top, rect.width, rect.height);
-    ctx.clip();
-    for (const [color, width] of [['#151b25', 5], ['#5ff5d2', 2]] as const) {
-      ctx.strokeStyle = color;
-      ctx.lineWidth = width;
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, 9, 0, Math.PI * 2);
-      ctx.moveTo(p.x - 15, p.y); ctx.lineTo(p.x + 15, p.y);
-      ctx.moveTo(p.x, p.y - 15); ctx.lineTo(p.x, p.y + 15);
-      ctx.stroke();
-    }
-    ctx.restore();
+    ctx.arc(p.x, p.y, 11, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = selected ? '#5ff5d2' : '#ffcf77';
+    ctx.font = '11px system-ui';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(String(impact.id), p.x, p.y);
   }
+  ctx.restore();
   return rect;
 }
