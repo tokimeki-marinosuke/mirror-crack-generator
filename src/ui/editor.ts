@@ -18,7 +18,7 @@ type Mode = 'add' | 'move';
 
 export function mountEditor(root: HTMLElement): void {
   root.innerHTML = `
-    <header><p class="eyebrow">IMAGE WORKSPACE · PHASE 5</p><h1>Mirror Crack Generator</h1>
+    <header><p class="eyebrow">BROWSER IMAGE EDITOR</p><h1>Mirror Crack Generator</h1>
     <p>衝撃点を追加し、選択した点ごとに亀裂を調整できます。</p></header>
     <main><section class="panel"><h2>画像</h2>
       <label class="upload">画像を選択<input id="image-file" type="file" accept="image/png,image/jpeg,image/webp"></label>
