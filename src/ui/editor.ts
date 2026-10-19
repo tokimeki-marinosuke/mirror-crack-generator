@@ -9,6 +9,7 @@ const sliders = [
   { key: 'complexity', label: '複雑さ', min: 0, max: 100, step: 1, unit: '%' },
   { key: 'concentricDensity', label: '同心円密度', min: 0, max: 100, step: 1, unit: '%' },
   { key: 'lineWidth', label: '線幅（元画像基準）', min: 0.5, max: 6, step: 0.1, unit: 'px' },
+  { key: 'highlight', label: 'ハイライト', min: 0, max: 100, step: 1, unit: '%' },
   { key: 'opacity', label: '不透明度', min: 0, max: 100, step: 1, unit: '%' },
 ] as const;
 
@@ -16,7 +17,7 @@ type Mode = 'add' | 'move';
 
 export function mountEditor(root: HTMLElement): void {
   root.innerHTML = `
-    <header><p class="eyebrow">IMAGE WORKSPACE · PHASE 3</p><h1>Mirror Crack Generator</h1>
+    <header><p class="eyebrow">IMAGE WORKSPACE · PHASE 4</p><h1>Mirror Crack Generator</h1>
     <p>衝撃点を追加し、選択した点ごとに亀裂を調整できます。</p></header>
     <main><section class="panel"><h2>画像</h2>
       <label class="upload">画像を選択<input id="image-file" type="file" accept="image/png,image/jpeg,image/webp"></label>

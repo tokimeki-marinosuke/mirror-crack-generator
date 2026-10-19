@@ -19,7 +19,7 @@ export function renderPreview(canvas: HTMLCanvasElement, image: HTMLImageElement
   ctx.save();
   ctx.translate(rect.left, rect.top);
   ctx.scale(rect.width / size.width, rect.height / size.height);
-  for (const impact of impacts) renderCracks(ctx, impact.pattern, size, impact.params);
+  for (const impact of impacts) renderCracks(ctx, impact.pattern, size, { ...impact.params, preset: impact.preset });
   ctx.restore();
   ctx.save();
   ctx.beginPath();

@@ -22,10 +22,10 @@ describe('衝撃点ごとの編集状態', () => {
   it('線幅と不透明度の変更は幾何生成とシードに影響しない', () => {
     const state = create();
     const first = state.add({ x: 200, y: 200 });
-    state.update({ params: { lineWidth: 6, opacity: 0 } });
+    state.update({ params: { lineWidth: 6, opacity: 0, highlight: 100 } });
     expect(state.active?.pattern).toBe(first.pattern);
     expect(state.active?.seed).toBe(first.seed);
-    expect(state.active?.params).toMatchObject({ lineWidth: 6, opacity: 0 });
+    expect(state.active?.params).toMatchObject({ lineWidth: 6, opacity: 0, highlight: 100 });
   });
   it('幾何設定を変更して戻すと元の形状を再現する', () => {
     const state = create();
@@ -90,7 +90,7 @@ describe('衝撃点ごとの編集状態', () => {
     const state = create();
     const first = state.add({ x: 200, y: 200 });
     for (const patch of [{ seed: 1.5 }, { params: { radialCount: 25 } },
-      { params: { lineWidth: 0 } }, { params: { opacity: 101 } }, { origin: { x: -1, y: 0 } }]) {
+      { params: { lineWidth: 0 } }, { params: { opacity: 101 } }, { params: { highlight: 101 } }, { origin: { x: -1, y: 0 } }]) {
       expect(() => state.update(patch)).toThrow();
       expect(state.active).toBe(first);
     }

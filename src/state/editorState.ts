@@ -1,8 +1,9 @@
 import { DEFAULT_CRACK_PARAMS, generateCracks, type CrackParams, type CrackPattern } from '../core/generateCracks';
 import type { Point, Size } from '../core/geometry';
 
-export type StylePreset = 'realistic' | 'anime';
-export type ImpactParams = CrackParams & { lineWidth: number; opacity: number };
+import type { StylePreset } from '../render/crackStyle';
+export type { StylePreset } from '../render/crackStyle';
+export type ImpactParams = CrackParams & { lineWidth: number; opacity: number; highlight: number };
 export type Impact = {
   id: number;
   origin: Point;
@@ -13,9 +14,9 @@ export type Impact = {
 };
 export const PRESETS: Record<StylePreset, Readonly<ImpactParams>> = {
   realistic: Object.freeze({ ...DEFAULT_CRACK_PARAMS, radialCount: 16, complexity: 75,
-    concentricDensity: 50, lineWidth: 1, opacity: 85 }),
+    concentricDensity: 50, lineWidth: 1, opacity: 85, highlight: 25 }),
   anime: Object.freeze({ ...DEFAULT_CRACK_PARAMS, radialCount: 8, complexity: 25,
-    concentricDensity: 25, lineWidth: 3, opacity: 100 }),
+    concentricDensity: 25, lineWidth: 3, opacity: 100, highlight: 65 }),
 };
 const geometryKeys = ['radialCount', 'lengthPercent', 'complexity', 'concentricDensity', 'maxSegments'] as const;
 
@@ -47,8 +48,9 @@ export class EditorState {
     if (!current) return;
     const params = { ...(patch.preset ? PRESETS[patch.preset] : current.params), ...patch.params };
     if (!Number.isFinite(params.lineWidth) || params.lineWidth < 0.5 || params.lineWidth > 6 ||
-        !Number.isFinite(params.opacity) || params.opacity < 0 || params.opacity > 100) {
-      throw new Error('線幅は0.5〜6px、不透明度は0〜100%で指定してください。');
+        !Number.isFinite(params.opacity) || params.opacity < 0 || params.opacity > 100 ||
+        !Number.isFinite(params.highlight) || params.highlight < 0 || params.highlight > 100) {
+      throw new Error('線幅は0.5〜6px、不透明度・ハイライトは0〜100%で指定してください。');
     }
     const origin = patch.origin ? { ...patch.origin } : current.origin;
     const seed = patch.seed ?? current.seed;
