@@ -1,3 +1,5 @@
+import { generateFractureSurface, type FractureGeometry } from '../core/generateFractureSurface';
+import { DEFAULT_SURFACE_SETTINGS, resolveFractureSettings, type SurfaceSettings } from './fractureSettings';
 import { DEFAULT_CRACK_PARAMS, generateCracks, type CrackParams, type CrackPattern } from '../core/generateCracks';
 import type { Point, Size } from '../core/geometry';
 
@@ -11,6 +13,8 @@ export type Impact = {
   preset: StylePreset;
   params: ImpactParams;
   pattern: CrackPattern;
+  surface?: SurfaceSettings;
+  fracture?: FractureGeometry;
 };
 export const PRESETS: Record<StylePreset, Readonly<ImpactParams>> = {
   realistic: Object.freeze({ ...DEFAULT_CRACK_PARAMS, radialCount: 16, complexity: 75,
@@ -38,6 +42,8 @@ export class EditorState {
     const params = { ...PRESETS.realistic };
     const impact: Impact = { id: this.nextId, origin: { ...origin }, seed, preset: 'realistic', params,
       pattern: generateCracks(this.size, origin, seed, params) };
+    impact.surface = { ...DEFAULT_SURFACE_SETTINGS };
+    impact.fracture = generateFractureSurface(impact.pattern, this.size, 0);
     this.nextId++;
     this.items = [...this.items, impact];
     this.selected = impact.id;
@@ -57,8 +63,21 @@ export class EditorState {
     const geometryChanged = seed !== current.seed || origin.x !== current.origin.x || origin.y !== current.origin.y ||
       geometryKeys.some(key => params[key] !== current.params[key]);
     const pattern = geometryChanged ? generateCracks(this.size, origin, seed, params) : current.pattern;
-    const next = { ...current, origin, seed, params, preset: patch.preset ?? current.preset, pattern };
+    const fracture = geometryChanged && current.surface
+      ? generateFractureSurface(pattern, this.size, current.surface.widthPercent) : current.fracture;
+    const next = { ...current, origin, seed, params, preset: patch.preset ?? current.preset, pattern, fracture };
     this.items = this.items.map(impact => impact.id === current.id ? next : impact);
+  }
+  /** 幅変更だけ破断面を再生成。暗部・反射・線幅で中心線を再生成しない。 */
+  updateSurface(patch: Partial<Pick<SurfaceSettings, 'widthPercent' | 'darkness'>>): void {
+    const current = this.active;
+    if (!current) return;
+    const surface = resolveFractureSettings(current.params, {
+      surface: { ...DEFAULT_SURFACE_SETTINGS, ...current.surface, ...patch },
+    }).surface;
+    const fracture = surface.widthPercent !== (current.surface?.widthPercent ?? 0) || !current.fracture
+      ? generateFractureSurface(current.pattern, this.size, surface.widthPercent) : current.fracture;
+    this.items = this.items.map(impact => impact.id === current.id ? { ...current, surface, fracture } : impact);
   }
   regenerate(): void {
     if (this.active) this.update({ seed: ((this.active.seed >>> 0) + 1) >>> 0 });

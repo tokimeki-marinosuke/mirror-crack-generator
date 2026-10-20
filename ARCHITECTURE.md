@@ -81,3 +81,12 @@ type Impact = { id: string; origin: Point; seed: number; preset: StylePreset; pa
 線幅と破断面幅は独立し、中心密度0の保護コアと将来の開始位置の演出を分離する。
 現段階では新しい設定をUIや描画へ接続せず、破断面の多角形も生成しない。
 データ構造・設定の優先関係・回帰比較は [基盤設計](docs/FRACTURE_FOUNDATION.md) を参照。
+
+## 主要亀裂の破断面（第2段階）
+
+中心線生成は変更せず、`generateFractureSurface.ts` で可視経路から幅プロファイル・多角形・
+片側の反射縁を作る。`renderFractureSurface.ts` は暗部と反射を描き、元画像の画素を消去しない。
+プレビューと両PNG出力は `renderImpacts` から同じ描画を使用する。
+破断面は衝撃点ごとにキャッシュし、幅変更ではその面だけ、暗部・反射変更では描画だけを更新する。
+既定幅は0で公開版の画素を維持する。操作UI・欠け・衝撃マクロの接続は後段。
+設定・制限・比較方法は [第2段階の設計](docs/FRACTURE_SURFACES.md) を参照。

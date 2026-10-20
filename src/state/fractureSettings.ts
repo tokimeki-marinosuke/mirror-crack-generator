@@ -1,8 +1,9 @@
 import { MAX_SEGMENTS, type CrackParams } from '../core/generateCracks';
 import type { ImpactParams } from './editorState';
 
-/** 次段階用の破断面設定。現段階ではUI・描画・既存Impactへ接続しない。 */
+/** 破断面の設定。chipDensityと衝撃マクロのUI接続は後段で実装する。 */
 export type SurfaceSettings = { widthPercent: number; darkness: number; chipDensity: number };
+export const DEFAULT_SURFACE_SETTINGS: Readonly<SurfaceSettings> = Object.freeze({ widthPercent: 0, darkness: 60, chipDensity: 0 });
 export type FractureSettingsInput = {
   /** 未指定なら現行設定をそのまま使用。50が中立のマクロ。 */
   impactStrength?: number;
@@ -41,7 +42,7 @@ export function resolveFractureSettings(base: Readonly<ImpactParams>, input: Fra
       throw new Error(`設定 ${key} は ${min}〜${max} の${integer ? '整数' : '有限数'}で指定してください。`);
     }
   }
-  const surface = { widthPercent: 0, darkness: 60, chipDensity: macro ?? 0, ...input.surface };
+  const surface = { ...DEFAULT_SURFACE_SETTINGS, chipDensity: macro ?? 0, ...input.surface };
   Object.values(surface).forEach(percent);
   const { lineWidth, opacity, highlight, ...geometry } = resolved;
   return { geometry, line: { lineWidth, opacity, highlight }, surface,

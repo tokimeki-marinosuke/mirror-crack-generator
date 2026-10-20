@@ -128,3 +128,8 @@ Vite の `base` は `/mirror-crack-generator/` に設定しています。
 `centerCracks.test.ts` は中心円と線分の最短距離、外側の完全一致、密度の連続変化、
 上限・境界・極端な設定を検証します。PNGの実ブラウザテストには中心のRGBA保護も含みます。
 全ての線分の交差除去や完全な破片グラフの構築は行っていません。
+
+## 破断面の段階的実装
+
+[第1段階の接続基盤](FRACTURE_FOUNDATION.md) と [第2段階の破断面](FRACTURE_SURFACES.md) を参照してください。
+第2段階の比較ページは `/mirror-crack-generator/tests/fracture.html` です。製品画面の既定幅は0のままです。

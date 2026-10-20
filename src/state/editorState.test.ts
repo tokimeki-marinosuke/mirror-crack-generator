@@ -112,3 +112,31 @@ it.each(['centerRadius', 'centerDensity'] as const)('%s は選択点だけを再
   state.update({ params: { [key]: second.params[key] } });
   expect(state.active?.pattern).toEqual(second.pattern);
 });
+
+it('破断面幅だけの更新は中心線を再利用し、他の衝撃点を変えない', () => {
+  const state = new EditorState({ width: 800, height: 500 });
+  const first = state.add({ x: 200, y: 200 });
+  const second = state.add({ x: 500, y: 250 });
+  state.updateSurface({ widthPercent: 80 });
+  expect(state.active?.pattern).toBe(second.pattern);
+  expect(state.active?.fracture?.faces.length).toBeGreaterThan(0);
+  expect(state.impacts[0]).toBe(first);
+  expect(state.active?.seed).toBe(second.seed);
+  const fracture = state.active?.fracture;
+  state.updateSurface({ darkness: 0 });
+  expect(state.active?.fracture).toBe(fracture);
+  state.update({ params: { highlight: 100, lineWidth: 6, opacity: 50 } });
+  expect(state.active?.fracture).toBe(fracture);
+  expect(state.active?.pattern).toBe(second.pattern);
+  expect(state.active?.surface?.widthPercent).toBe(80);
+});
+it('中心線の変更で破断面を更新し、元のシードに戻すと同じ破断面になる', () => {
+  const state = new EditorState({ width: 800, height: 500 });
+  state.add({ x: 400, y: 250 }); state.updateSurface({ widthPercent: 80 });
+  const initial = state.active!.fracture;
+  state.regenerate(); expect(state.active!.fracture).not.toEqual(initial);
+  state.update({ seed: 1 }); expect(state.active!.fracture).toEqual(initial);
+  expect(() => state.updateSurface({ widthPercent: 101 })).toThrow();
+  expect(state.active!.fracture).toEqual(initial);
+  state.updateSurface({ widthPercent: 0 }); expect(state.active!.fracture!.faces).toEqual([]);
+});
