@@ -141,3 +141,5 @@ Vite の `base` は `/mirror-crack-generator/` に設定しています。
 画像変形に向けた第1段階の平面分割と安全上限は [破片領域の抽出](SHARD_REGIONS.md) を参照。
 
 第2段階の開発用ページとPlaywright検証は [破片領域の可視化](SHARD_INSPECTOR.md) を参照。
+
+第3段階の開発ページ・シード付き画像変形と検証は [破片画像のずれ・回転](SHARD_MOTION.md) を参照。

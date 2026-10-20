@@ -120,3 +120,11 @@ type Impact = { id: string; origin: Point; seed: number; preset: StylePreset; pa
 保護円と重なる破片全体の診断表示と、抽出失敗時の従来描画への復帰は開発ページだけに置く。
 製品の生成・描画・UI・PNG出力へはまだ接続しない。
 ケース・操作・確認方法は [破片領域の可視化](docs/SHARD_INSPECTOR.md) を参照。
+
+## 破片内の画像変形（第3段階）
+
+`core/shardTransforms.ts` で大きい破片から最大256個のずれ・回転をシード付きで計算する。
+保護円と重なる破片全体と、対象外の小片は動かさない。
+`render/renderShardImage.ts` は固定輪郭の中だけ元画像を再描画し、0なら元画像を1回描画する。
+開発ページにだけ接続し、製品プレビュー・PNG出力には未接続。
+アルファの合成と制約は [破片画像の変形](docs/SHARD_MOTION.md) を参照。
