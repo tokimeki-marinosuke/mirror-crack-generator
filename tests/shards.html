@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="ja"><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>破片領域の検証 — 第2段階</title>
+<style>
+body{font:15px system-ui;margin:24px;color:#e9edf5;background:#10141d}h1{font-size:25px}p{line-height:1.8;color:#b5c4d8}.controls{display:flex;flex-wrap:wrap;align-items:end;gap:20px;padding:18px;background:#1a202d;border-radius:10px}label{display:grid;gap:8px}select,input,button{font:inherit;color:inherit;background:#252f40;border:1px solid #526179;border-radius:5px;padding:7px}input[type=range]{padding:0;accent-color:#5ff5d2}input[type=number]{width:110px}button{cursor:pointer}.checks{display:flex;flex-wrap:wrap;gap:18px;margin:18px 0}.checks label{display:flex;align-items:center}main{display:grid;grid-template-columns:1fr 1fr;gap:24px}figure{margin:0}figcaption{margin:12px 0}canvas{display:block;width:100%;height:auto;background:#e8eef2}#regions{max-height:260px;overflow:auto;border:1px solid #374257}#regions button{display:block;text-align:left;width:100%;border-radius:0}#regions button[aria-pressed=true]{border-color:#5ff5d2;color:#5ff5d2}.legend{display:flex;gap:20px;flex-wrap:wrap}.boundary{color:#ffbd59}.decoration{color:#538dff}.frame{color:#e2e8f0}.protected{color:#5ff5d2}[data-status=failed]{color:#ff9999}#details{white-space:pre-wrap;overflow-wrap:anywhere}output{color:#5ff5d2}@media(max-width:900px){main{grid-template-columns:1fr}body{margin:16px}}
+</style>
+<h1>破片領域の検証 · 第2段階</h1>
+<p>左は元画像＋入力亀裂、右は抽出領域の色分けです。画像の変形は行いません。開発専用ページで、通常画面・PNG出力には接続していません。</p>
+<div class="controls">
+<label>確認ケース<select id="scenario"></select></label>
+<label>シード<input id="seed" type="number" min="-9007199254740991" max="9007199254740991" step="1" value="42"></label>
+<label>中心密度 <output id="density-value">0%</output><input id="density" type="range" min="0" max="100" value="0"></label>
+<button id="regenerate" type="button">シードを進める</button>
+</div>
+<div class="checks"><label><input id="show-boundaries" type="checkbox" checked>破片境界</label><label><input id="show-decorations" type="checkbox" checked>装飾亀裂</label><label><input id="show-protection" type="checkbox" checked>中心保護の診断表示</label></div>
+<p class="legend"><span class="boundary">橙：破片境界</span><span class="decoration">青い破線：装飾亀裂</span><span class="frame">灰：画像四辺</span><span class="protected">斜線：保護円と重なる破片全体（変形対象外の候補）</span></p>
+<main><figure><figcaption>元画像＋入力亀裂（フォールバック表示）</figcaption><canvas id="source" width="800" height="500"></canvas></figure><figure><figcaption>閉領域・穴・境界分類（クリックで選択）</figcaption><canvas id="regions-canvas" width="800" height="500"></canvas></figure></main>
+<p id="summary" role="status">読み込み中…</p><p>破片一覧は面積の大きい順です。256を超えても領域抽出を止めません。選択や表示チェックの変更では再抽出しません。</p>
+<div id="regions" role="group" aria-label="抽出した破片"></div><pre id="details" aria-live="polite">未選択</pre>
+<script type="module" src="./shards.browser.ts"></script></html>

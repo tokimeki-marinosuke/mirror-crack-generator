@@ -139,3 +139,5 @@ Vite の `base` は `/mirror-crack-generator/` に設定しています。
 第4段階の製品UI・衝撃マクロ・プリセットとPlaywright確認方法は [操作UIとプリセット](FRACTURE_CONTROLS.md) を参照。
 
 画像変形に向けた第1段階の平面分割と安全上限は [破片領域の抽出](SHARD_REGIONS.md) を参照。
+
+第2段階の開発用ページとPlaywright検証は [破片領域の可視化](SHARD_INSPECTOR.md) を参照。
