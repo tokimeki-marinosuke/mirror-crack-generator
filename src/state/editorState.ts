@@ -14,6 +14,10 @@ export type Impact = {
   params: ImpactParams;
   pattern: CrackPattern;
   surface?: SurfaceSettings;
+  effectPreset?: EffectPreset;
+  impactStrength?: number;
+  overrides?: Partial<ImpactParams>;
+  surfaceOverrides?: Partial<SurfaceSettings>;
   fracture?: FractureGeometry;
 };
 export const PRESETS: Record<StylePreset, Readonly<ImpactParams>> = {
@@ -22,6 +26,12 @@ export const PRESETS: Record<StylePreset, Readonly<ImpactParams>> = {
   anime: Object.freeze({ ...DEFAULT_CRACK_PARAMS, radialCount: 8, complexity: 25,
     concentricDensity: 25, centerRadius: 25, centerDensity: 25, lineWidth: 3, opacity: 100, highlight: 65 }),
 };
+export const EFFECT_PRESETS = {
+  delicate: { label: '繊細な放射型', style: 'realistic', params: { radialCount: 10, lengthPercent: 110, complexity: 40, concentricDensity: 15, centerDensity: 0, lineWidth: 0.8, highlight: 30 }, surface: { widthPercent: 10, darkness: 30, chipDensity: 5 } },
+  web: { label: '蜘蛛の巣型', style: 'realistic', params: { radialCount: 16, lengthPercent: 100, complexity: 60, concentricDensity: 85, centerDensity: 25, lineWidth: 1, highlight: 50 }, surface: { widthPercent: 20, darkness: 45, chipDensity: 15 } },
+  shattered: { label: '激しい破砕型', style: 'anime', params: { radialCount: 18, lengthPercent: 110, complexity: 85, concentricDensity: 60, centerDensity: 90, lineWidth: 1.8, highlight: 85 }, surface: { widthPercent: 65, darkness: 85, chipDensity: 75 } },
+} as const;
+export type EffectPreset = keyof typeof EFFECT_PRESETS;
 const geometryKeys = ['radialCount', 'lengthPercent', 'complexity', 'concentricDensity', 'centerRadius', 'centerDensity', 'maxSegments'] as const;
 
 /** 編集状態はUI/Canvasに依存せず、変更した衝撃点だけを再生成する。 */
@@ -65,7 +75,8 @@ export class EditorState {
     const pattern = geometryChanged ? generateCracks(this.size, origin, seed, params) : current.pattern;
     const fracture = geometryChanged && current.surface
       ? generateFractureSurface(pattern, this.size, current.surface.widthPercent, current.surface.chipDensity) : current.fracture;
-    const next = { ...current, origin, seed, params, preset: patch.preset ?? current.preset, pattern, fracture };
+    const next = { ...current, origin, seed, params, preset: patch.preset ?? current.preset, pattern, fracture,
+      overrides: { ...current.overrides, ...patch.params } };
     this.items = this.items.map(impact => impact.id === current.id ? next : impact);
   }
   /** 幅・欠け密度変更だけ破断面を再生成。暗部・反射・線幅で中心線を再生成しない。 */
@@ -77,7 +88,36 @@ export class EditorState {
     }).surface;
     const fracture = surface.widthPercent !== (current.surface?.widthPercent ?? 0) || surface.chipDensity !== (current.surface?.chipDensity ?? 0) || !current.fracture
       ? generateFractureSurface(current.pattern, this.size, surface.widthPercent, surface.chipDensity) : current.fracture;
-    this.items = this.items.map(impact => impact.id === current.id ? { ...current, surface, fracture } : impact);
+    this.items = this.items.map(impact => impact.id === current.id ? { ...current, surface, fracture, surfaceOverrides: { ...current.surfaceOverrides, ...patch } } : impact);
+  }
+  /** プリセット選択は個別調整をリセット。位置とシードは保持する。 */
+  applyPreset(id: EffectPreset | StylePreset): void {
+    if (!this.active) return;
+    const effect = id === 'realistic' || id === 'anime' ? undefined : EFFECT_PRESETS[id];
+    const style = effect?.style ?? id as StylePreset;
+    this.update({ preset: style, params: effect?.params });
+    this.updateSurface(effect?.surface ?? DEFAULT_SURFACE_SETTINGS);
+    const current = this.active!;
+    this.items = this.items.map(item => item.id === current.id ? { ...current,
+      effectPreset: effect ? id as EffectPreset : undefined, impactStrength: 50,
+      overrides: {}, surfaceOverrides: {} } : item);
+  }
+  /** 常にプリセット基準から計算し、繰り返し操作による累積変化を避ける。 */
+  updateStrength(value: number): void {
+    const current = this.active;
+    if (!current) return;
+    const effect = current.effectPreset ? EFFECT_PRESETS[current.effectPreset] : undefined;
+    const base = { ...PRESETS[current.preset], ...effect?.params };
+    const baseSurface = effect?.surface ?? DEFAULT_SURFACE_SETTINGS;
+    const resolved = resolveFractureSettings(base, { impactStrength: value, overrides: current.overrides,
+      surface: { ...baseSurface, chipDensity: Math.max(0, Math.min(100, baseSurface.chipDensity + value - 50)), ...current.surfaceOverrides } });
+    const params = { ...resolved.geometry, ...resolved.line };
+    const geometryChanged = geometryKeys.some(key => params[key] !== current.params[key]);
+    const pattern = geometryChanged ? generateCracks(this.size, current.origin, current.seed, params) : current.pattern;
+    const surface = resolved.surface;
+    const changed = geometryChanged || surface.widthPercent !== current.surface?.widthPercent || surface.chipDensity !== current.surface?.chipDensity;
+    const fracture = changed ? generateFractureSurface(pattern, this.size, surface.widthPercent, surface.chipDensity) : current.fracture;
+    this.items = this.items.map(item => item.id === current.id ? { ...current, params, pattern, surface, fracture, impactStrength: value } : item);
   }
   regenerate(): void {
     if (this.active) this.update({ seed: ((this.active.seed >>> 0) + 1) >>> 0 });

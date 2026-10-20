@@ -151,3 +151,48 @@ it('欠け密度だけの変更は中心線と別の衝撃点を保持し、暗�
   state.updateSurface({ darkness: 20 });
   expect(state.active!.fracture).toBe(fracture);
 });
+it('新プリセットは破断面を有効にし、位置・シードを保ちながら個別調整をリセットする', () => {
+  const state = new EditorState({ width: 800, height: 500 }); state.add({ x: 400, y: 250 });
+  state.update({ seed: 42 });
+  for (const id of ['delicate', 'web', 'shattered'] as const) {
+    state.applyPreset(id);
+    expect(state.active!.surface!.widthPercent).toBeGreaterThan(0);
+    expect(state.active!.fracture!.faces.length).toBeGreaterThan(0);
+    expect(state.active!.seed).toBe(42);
+    expect(state.active!.origin).toEqual({ x: 400, y: 250 });
+    expect(state.active!.overrides).toEqual({});
+  }
+  state.applyPreset('realistic');
+  expect(state.active!.surface!.widthPercent).toBe(0);
+  expect(state.active!.params).toEqual(PRESETS.realistic);
+  expect(state.active!.effectPreset).toBeUndefined();
+});
+it('衝撃マクロは個別調整と中心保護を優先し、累積せず同じ設定へ戻せる', () => {
+  const state = new EditorState({ width: 800, height: 500 }); state.add({ x: 400, y: 250 });
+  state.applyPreset('delicate'); const initial = state.active!;
+  state.updateStrength(100);
+  expect(state.active!.params.lengthPercent).toBeGreaterThan(initial.params.lengthPercent);
+  expect(state.active!.surface!.chipDensity).toBeGreaterThan(initial.surface!.chipDensity);
+  expect(state.active!.params.centerDensity).toBe(0);
+  state.updateStrength(50);
+  expect(state.active!.pattern).toEqual(initial.pattern);
+  expect(state.active!.fracture).toEqual(initial.fracture);
+  state.update({ params: { lengthPercent: 30, lineWidth: 4, centerDensity: 0 } });
+  state.updateSurface({ chipDensity: 12, widthPercent: 70, darkness: 0 });
+  state.updateStrength(100);
+  expect(state.active!.params).toMatchObject({ lengthPercent: 30, lineWidth: 4, centerDensity: 0 });
+  expect(state.active!.surface).toMatchObject({ chipDensity: 12, widthPercent: 70, darkness: 0 });
+  const before = state.active;
+  expect(() => state.updateStrength(NaN)).toThrow();
+  expect(state.active).toBe(before);
+  state.applyPreset('delicate'); state.updateStrength(100);
+  expect(state.active!.params.lengthPercent).toBeGreaterThan(30);
+});
+it('マクロと個別設定は各衝撃点で独立する', () => {
+  const state = new EditorState({ width: 800, height: 500 }); const first = state.add({ x: 100, y: 100 });
+  state.add({ x: 400, y: 250 }); state.applyPreset('shattered'); state.updateStrength(80);
+  expect(state.impacts[0]).toBe(first);
+  const second = state.active; state.select(first.id);
+  expect(state.active!.impactStrength).toBeUndefined();
+  state.updateStrength(20); expect(state.impacts[1]).toBe(second);
+});

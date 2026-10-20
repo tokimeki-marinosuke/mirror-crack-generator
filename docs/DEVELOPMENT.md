@@ -135,3 +135,5 @@ Vite の `base` は `/mirror-crack-generator/` に設定しています。
 第2段階の比較ページは `/mirror-crack-generator/tests/fracture.html` です。製品画面の既定幅は0のままです。
 
 第3段階の純粋な欠け生成・キャッシュ・比較ページは [欠けと中心破砕](FRACTURE_CHIPS.md) を参照。
+
+第4段階の製品UI・衝撃マクロ・プリセットとPlaywright確認方法は [操作UIとプリセット](FRACTURE_CONTROLS.md) を参照。

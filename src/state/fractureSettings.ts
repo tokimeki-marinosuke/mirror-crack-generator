@@ -1,7 +1,7 @@
 import { MAX_SEGMENTS, type CrackParams } from '../core/generateCracks';
 import type { ImpactParams } from './editorState';
 
-/** 破断面の設定。chipDensityと衝撃マクロのUI接続は後段で実装する。 */
+/** 破断面の設定。線幅・暗部とは独立して保持する。 */
 export type SurfaceSettings = { widthPercent: number; darkness: number; chipDensity: number };
 export const DEFAULT_SURFACE_SETTINGS: Readonly<SurfaceSettings> = Object.freeze({ widthPercent: 0, darkness: 60, chipDensity: 0 });
 export type FractureSettingsInput = {

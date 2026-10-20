@@ -98,3 +98,11 @@ type Impact = { id: string; origin: Point; seed: number; preset: StylePreset; pa
 欠けも共通の暗部・反射描画と中心クリップを使い、画像の消去は行わない。
 既定の欠け密度は0。製品UIへの接続は次段階とする。
 詳細と比較画像は [第3段階の設計](docs/FRACTURE_CHIPS.md) を参照。
+
+## 操作UIとプリセット（第4段階）
+
+製品UIに破断面幅・暗部・欠け密度と衝撃マクロを接続する。
+3つの効果プリセットは既存のRealistic/Anime描画を利用し、選択UIは一つにまとめる。
+各点の個別指定をマクロより優先し、プリセット変更で初期化する。
+スライダー入力はフレーム単位でまとめ、PNG出力・点の切り替え前に反映する。
+優先関係・操作・検証は [第4段階](docs/FRACTURE_CONTROLS.md) を参照。
