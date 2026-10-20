@@ -128,3 +128,11 @@ type Impact = { id: string; origin: Point; seed: number; preset: StylePreset; pa
 `render/renderShardImage.ts` は固定輪郭の中だけ元画像を再描画し、0なら元画像を1回描画する。
 開発ページにだけ接続し、製品プレビュー・PNG出力には未接続。
 アルファの合成と制約は [破片画像の変形](docs/SHARD_MOTION.md) を参照。
+
+## 破片画像の製品接続（第4段階）
+
+`state/shardImageState.ts` が画像全体の4設定と平面分割・変形スナップショットをキャッシュする。
+通常プレビューと合成PNGは背景専用の `renderCompositeImage` を共有し、その後で亀裂を重ねる。
+亀裂のみPNGは従来の描画経路を維持。全設定0・抽出失敗・閉境界なしでは元画像を維持する。
+明暗差と隙間は破片全体の保護と256個の対象制限を共用する。
+キャッシュ条件・設定の独立性・検証は [製品接続](docs/SHARD_COMPOSITE.md) を参照。

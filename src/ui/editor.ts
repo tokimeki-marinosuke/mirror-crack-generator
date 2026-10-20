@@ -1,3 +1,4 @@
+import { DEFAULT_SHARD_IMAGE_SETTINGS } from '../state/shardImageState';
 import type { SurfaceSettings } from '../state/fractureSettings';
 import { downloadPng, exportFileName, exportPng, type ExportMode } from '../image/exportPng';
 import { containRect, imageToScreen, screenToImage, type Point } from '../core/geometry';
@@ -21,6 +22,13 @@ const surfaceSliders = [
   { key: 'widthPercent', label: '破断面の幅（線幅とは独立）' },
   { key: 'darkness', label: '暗部の強さ' },
   { key: 'chipDensity', label: '欠けの密度' },
+] as const;
+
+const shardSliders = [
+  { key: 'displacement', label: '映りのずれ' },
+  { key: 'rotation', label: '映りの回転' },
+  { key: 'reflection', label: '破片ごとの明暗差' },
+  { key: 'gap', label: '破片間の暗い隙間' },
 ] as const;
 
 type Mode = 'add' | 'move';
@@ -51,7 +59,14 @@ export function mountEditor(root: HTMLElement): void {
       <div class="stage"><canvas aria-label="画像プレビュー。クリックで衝撃点を追加、マーカーをドラッグして移動"></canvas>
       <p class="placeholder">ここに画像をドロップ<br><span>または「画像を選択」から開く</span></p></div>
       <p class="status" role="status">画像を読み込むとプレビューが表示されます。</p>
-    </section><section class="panel settings"><h2>選択点の調整</h2>
+    </section><section class="panel settings">      <h2>画像全体の映り</h2>
+      <fieldset id="shard-settings" disabled><legend class="sr-only">鏡の破片の画像変形</legend>
+      <p class="hint">全ての衝撃点で区切られた破片に適用します。亀裂の縁の反射・破断面幅とは別の設定です。</p>
+      <button type="button" id="shard-demo">映りの変化を試す</button>
+      ${shardSliders.map(s=>`<label class="control" for="shard-${s.key}">${s.label}<output id="shard-${s.key}-value">0%</output></label><input id="shard-${s.key}" type="range" min="0" max="100" step="1" value="0">`).join('')}
+      <button type="button" id="shard-reset">映りの変化を0に戻す</button>
+      <p class="hint">中心密度0%の領域と重なる破片全体を保護します。大きい破片から最大256個を変更し、小片は元画像のまま残します。合成PNGに反映し、亀裂のみPNGは従来どおりです。</p>
+      </fieldset><p id="shard-status" role="status"></p><hr><h2>選択点の調整</h2>
       <fieldset id="settings" disabled><legend class="sr-only">亀裂設定</legend>
       <label class="control">プリセット<select id="preset"><option value="realistic">Realistic</option><option value="anime">Anime</option>${Object.entries(EFFECT_PRESETS).map(([id, p]) => `<option value="${id}">${p.label}</option>`).join('')}</select></label>
       <p class="hint">切り替えると調整値を初期化します。位置・シードは保持します。</p>
@@ -59,7 +74,7 @@ export function mountEditor(root: HTMLElement): void {
       <input id="impact-strength" type="range" min="0" max="100" step="1" value="50">
       <p class="hint">長さ・分岐・欠けをまとめて調整。個別に変更した項目を優先します。プリセットの選び直しで個別調整を解除します。中心保護・線幅・破断面幅は保持します。</p>
       ${surfaceSliders.map(s => `<label class="control" for="surface-${s.key}">${s.label}<output id="surface-${s.key}-value"></output></label><input id="surface-${s.key}" type="range" min="0" max="100" step="1">`).join('')}
-      <p class="hint">隙間や欠けを見るには破断面の幅を上げてください。反射は縁の光で、画像の映り込み・破片の移動は行いません。</p>
+      <p class="hint">隙間や欠けを見るには破断面の幅を上げてください。反射は亀裂の縁の光です。破片内の画像のずれ・回転は「画像全体の映り」で調整できます。</p>
       ${sliders.map(s => `<label class="control" for="${s.key}">${s.label}<output id="${s.key}-value"></output></label>
       <input type="range" id="${s.key}" min="${s.min}" max="${s.max}" step="${s.step}">`).join('')}
       <label class="control" for="seed">シード（整数）</label>
@@ -67,6 +82,7 @@ export function mountEditor(root: HTMLElement): void {
       <button type="button" id="regenerate">再生成</button>
       <p class="hint">再生成でシードを1つ進めます。スライダー操作ではシードを保持します。</p>
       </fieldset>
+
     </section></main>`;
   const get = <T extends HTMLElement>(selector: string): T => root.querySelector<T>(selector)!;
   const canvas = get<HTMLCanvasElement>('canvas');
@@ -91,7 +107,19 @@ export function mountEditor(root: HTMLElement): void {
   let drag: { pointerId: number; start: Point; origin: Point; moved: boolean } | null = null;
 
   function redraw(): void {
-    try { renderPreview(canvas, image, state?.impacts ?? [], state?.selectedId ?? null); }
+    try {
+      const composition=state?.shards.resolve(state.impacts);
+      renderPreview(canvas, image, state?.impacts ?? [], state?.selectedId ?? null, composition);
+      const message=get('#shard-status');
+      if(!composition){message.textContent='映りの変化は0です。';message.dataset.status='off';}
+      else if(!composition.extraction.ok){message.textContent='破片を安全に抽出できないため、元画像＋亀裂で表示・保存します。主要亀裂数・蜘蛛の巣の密度を下げるか、衝撃点を減らして再試行してください。';message.dataset.status='fallback';}
+      else if(!composition.plan){message.textContent='閉じた破片境界がないため、元画像を維持しています。蜘蛛の巣の密度や亀裂の長さを調整してください。';message.dataset.status='undivided';}
+      else {
+        const motions=composition.plan.motions;
+        message.textContent=`${motions.length}破片 / 変更対象${motions.filter(m=>m.reason==='active').length} / 保護${motions.filter(m=>m.reason==='protected').length} / 小片据え置き${motions.filter(m=>m.reason==='budget').length}`;
+        message.dataset.status='active';
+      }
+    }
     catch { status.textContent = 'プレビューを描画できません。小さい画像または別のブラウザをお試しください。'; }
   }
   function refresh(): void {
@@ -103,6 +131,12 @@ export function mountEditor(root: HTMLElement): void {
     } else list.add(new Option('衝撃点なし', ''));
     list.disabled = !active;
     settings.disabled = !active;
+    get<HTMLFieldSetElement>('#shard-settings').disabled=!image||!state?.impacts.length;
+    for(const slider of shardSliders){
+      const value=state?.shards.settings[slider.key]??0;
+      get<HTMLInputElement>(`#shard-${slider.key}`).value=String(value);
+      get<HTMLOutputElement>(`#shard-${slider.key}-value`).value=`${value}%`;
+    }
     get<HTMLButtonElement>('#delete-impact').disabled = !active;
     for (const button of root.querySelectorAll<HTMLButtonElement>('[data-mode]')) {
       button.disabled = button.dataset.mode === 'add' ? !image : !active;
@@ -182,7 +216,8 @@ export function mountEditor(root: HTMLElement): void {
     exporting = true; syncExportControls();
     feedback.textContent = 'PNGを作成しています…';
     try {
-      const blob = await exportPng(source, impacts, mode);
+      const composition=mode==='composite'?state.shards.resolve(impacts):undefined;
+      const blob = await exportPng(source, impacts, mode, composition);
       downloadPng(blob, filename);
       feedback.textContent = `${filename} の保存を開始しました（${source.naturalWidth} × ${source.naturalHeight}px）。`;
     } catch (error) {
@@ -226,6 +261,12 @@ export function mountEditor(root: HTMLElement): void {
     const value = (event.target as HTMLInputElement).valueAsNumber;
     queue('strength', () => state?.updateStrength(value));
   });
+  for(const slider of shardSliders){
+    const control=get<HTMLInputElement>(`#shard-${slider.key}`);
+    control.addEventListener('input',()=>{const value=control.valueAsNumber;queue(`shard-${slider.key}`,()=>state?.shards.update({[slider.key]:value}));});
+  }
+  get('#shard-demo').addEventListener('click',()=>edit(()=>state?.shards.update({displacement:60,rotation:45,reflection:50,gap:25})));
+  get('#shard-reset').addEventListener('click',()=>edit(()=>state?.shards.update(DEFAULT_SHARD_IMAGE_SETTINGS)));
   function applySeed(): boolean {
     const value = seed.valueAsNumber;
     if (!Number.isSafeInteger(value)) {

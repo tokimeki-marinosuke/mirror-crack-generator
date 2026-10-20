@@ -84,3 +84,5 @@ CHROMIUM_PATH=/usr/bin/chromium node tests/shard-motion-ui.cjs
 通常の `npm test` では既存の大量生成ケースが5秒制限を超えたため、
 `npm test -- --maxWorkers=1 --testTimeout=15000` で全件を再確認した（該当ケースは約1.4秒で成功）。
 既存のテスト条件や生成コードは変更していない。
+
+第4段階で[明暗・隙間と製品UI・合成PNG](SHARD_COMPOSITE.md)へ接続した。第3段階の開発ページは維持する。

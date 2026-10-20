@@ -1,3 +1,5 @@
+import { renderCompositeImage } from '../render/renderShardImage';
+import type { ShardComposition } from '../state/shardImageState';
 import type { Impact } from '../state/editorState';
 import { renderImpacts } from '../render/renderImpacts';
 import { validateImageSize } from './limits';
@@ -5,7 +7,7 @@ import { validateImageSize } from './limits';
 export type ExportMode = 'composite' | 'cracks';
 
 /** 元解像度で新しいCanvasに描画し、ローカルでPNG Blobを返す。 */
-export async function exportPng(image: HTMLImageElement, impacts: readonly Impact[], mode: ExportMode): Promise<Blob> {
+export async function exportPng(image: HTMLImageElement, impacts: readonly Impact[], mode: ExportMode, composition?: ShardComposition): Promise<Blob> {
   const size = { width: image.naturalWidth, height: image.naturalHeight };
   validateImageSize(size);
   const canvas = document.createElement('canvas');
@@ -19,7 +21,7 @@ export async function exportPng(image: HTMLImageElement, impacts: readonly Impac
       throw new Error('Canvasの画像領域を確保できません。');
     }
     ctx.clearRect(0, 0, size.width, size.height);
-    if (mode === 'composite') ctx.drawImage(image, 0, 0);
+    if (mode === 'composite') renderCompositeImage(ctx, image, size, composition);
     renderImpacts(ctx, impacts, size);
     const blob = await new Promise<Blob>((resolve, reject) => {
       canvas.toBlob(result => {

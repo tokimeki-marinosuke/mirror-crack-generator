@@ -1,3 +1,4 @@
+import { ShardImageState } from '../src/state/shardImageState';
 import { exportPng } from '../src/image/exportPng';
 import { loadImage } from '../src/image/loadImage';
 import { containRect, screenToImage } from '../src/core/geometry';
@@ -45,6 +46,15 @@ const impact: Impact = {
   pattern: { origin, seed: 1, segments: [{ start: origin, end: { x: 240, y: 120 }, type: 'radial' }] },
 };
 const alpha = (data: Uint8ClampedArray, x: number, y: number) => data[(y * size.width + x) * 4 + 3];
+async function shardFixture() {
+  const c=canvas(size.width,size.height),ctx=c.getContext('2d')!;
+  const gradient=ctx.createLinearGradient(0,0,size.width,size.height);gradient.addColorStop(0,'rgba(80,130,200,.5)');gradient.addColorStop(1,'rgba(220,90,40,.5)');ctx.fillStyle=gradient;ctx.fillRect(0,0,size.width,size.height);
+  ctx.clearRect(25,25,15,15);
+  const picture=await loadImage(new File([await asBlob(c)],'shards.png',{type:'image/png'}));
+  const point={x:80,y:120};
+  const cut:Impact={...impact,origin:point,pattern:{origin:point,seed:42,segments:[{start:{x:160,y:0},end:{x:160,y:240},type:'radial'}]}};
+  return {picture,cut};
+}
 const tests: [string, () => Promise<void>][] = [
   ['合成PNGの元解像度・元画像の透過を保持（衝撃点なし）', async () => {
     const result = await pixels(await exportPng(image, [], 'composite'));
@@ -174,6 +184,49 @@ const tests: [string, () => Promise<void>][] = [
     editor.updateSurface({ darkness: 100 }); editor.updateSurface({ widthPercent: 0 });
     const reset = await pixels(await exportPng(image, editor.impacts, 'composite'));
     assert(original.data.every((v, i) => v === reset.data[i]), '幅0で既存PNGに完全復帰');
+  }],
+  ['破片の4設定は合成PNGにだけ適用し、0へ戻すと全RGBA画素一致',async()=>{
+    const {picture,cut}=await shardFixture(),shards=new ShardImageState(size);
+    const original=await pixels(await exportPng(picture,[cut],'composite'));
+    const oldCracks=await pixels(await exportPng(picture,[cut],'cracks'));
+    for(const key of ['displacement','rotation','reflection','gap'] as const){
+      shards.update({displacement:0,rotation:0,reflection:0,gap:0,[key]:100});
+      const composition=shards.resolve([cut]);
+      const changed=await pixels(await exportPng(picture,[cut],'composite',composition));
+      assert(changed.width===size.width&&changed.height===size.height,'変形後も元解像度');
+      assert(!changed.data.every((v,i)=>v===original.data[i]),`${key}が合成画像に作用`);
+      const cracks=await pixels(await exportPng(picture,[cut],'cracks',composition));
+      assert(cracks.data.every((v,i)=>v===oldCracks.data[i]),`${key}が亀裂のみPNGに入らない`);
+    }
+    assert(shards.extractions===1,'4設定で分割を再抽出しない');
+    shards.update({displacement:0,rotation:0,reflection:0,gap:0});
+    const reset=await pixels(await exportPng(picture,[cut],'composite',shards.resolve([cut])));
+    assert(reset.data.every((v,i)=>v===original.data[i]),'全設定0で従来PNGと完全一致');
+  }],
+  ['破片の明暗差は半透明のアルファを維持し、暗い隙間とは独立',async()=>{
+    const {picture,cut}=await shardFixture(),shards=new ShardImageState(size);
+    const original=await pixels(await exportPng(picture,[cut],'composite'));
+    shards.update({reflection:100});
+    const changed=await pixels(await exportPng(picture,[cut],'composite',shards.resolve([cut])));
+    for(let y=5;y<235;y++)for(let x=5;x<315;x++){
+      if(Math.abs(x-160)<5)continue;const index=(y*size.width+x)*4;
+      assert(changed.data[index+3]===original.data[index+3],'明暗差で元画像のアルファを変えない');
+    }
+  }],
+  ['中心保護円だけでなく重なる破片全体を明暗・隙間から保護',async()=>{
+    const {picture,cut}=await shardFixture();cut.pattern.protectedRadius=25;
+    const original=await pixels(await exportPng(picture,[cut],'composite'));
+    const shards=new ShardImageState(size);shards.update({displacement:100,rotation:100,reflection:100,gap:100});
+    const composition=shards.resolve([cut]);assert(composition?.plan?.motions.filter(m=>m.reason==='protected').length===1,'保護対象が1破片');
+    const changed=await pixels(await exportPng(picture,[cut],'composite',composition));
+    for(let y=3;y<237;y++)for(let x=3;x<155;x++){const index=(y*size.width+x)*4;assert(changed.data.slice(index,index+4).every((v,i)=>v===original.data[index+i]),'円の外も含め左破片全体のRGBAを維持');}
+  }],
+  ['抽出失敗と未分割では合成PNGも元画像＋亀裂に戻る',async()=>{
+    const {picture,cut}=await shardFixture();const shards=new ShardImageState(size,{edges:1});shards.update({displacement:100,reflection:100,gap:100});
+    const composition=shards.resolve([cut]);assert(composition?.extraction.ok===false,'予算超過を再現');
+    const old=await pixels(await exportPng(picture,[cut],'composite'));
+    const fallback=await pixels(await exportPng(picture,[cut],'composite',composition));
+    assert(old.data.every((v,i)=>v===fallback.data[i]),'失敗時の合成RGBA一致');
   }],
   ['大きい画像も縮小せずPNG出力（2048×1024）', async () => {
     const big = await loadImage(new File([await asBlob(canvas(2048, 1024))], 'large.png', { type: 'image/png' }));

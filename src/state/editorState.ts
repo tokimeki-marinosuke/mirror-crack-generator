@@ -1,3 +1,4 @@
+import { ShardImageState } from './shardImageState';
 import { generateFractureSurface, type FractureGeometry } from '../core/generateFractureSurface';
 import { DEFAULT_SURFACE_SETTINGS, resolveFractureSettings, type SurfaceSettings } from './fractureSettings';
 import { DEFAULT_CRACK_PARAMS, generateCracks, type CrackParams, type CrackPattern } from '../core/generateCracks';
@@ -39,7 +40,8 @@ export class EditorState {
   private items: Impact[] = [];
   private selected: number | null = null;
   private nextId = 1;
-  constructor(readonly size: Size) {}
+  readonly shards: ShardImageState;
+  constructor(readonly size: Size) { this.shards = new ShardImageState(size); }
   get impacts(): readonly Impact[] { return this.items; }
   get selectedId(): number | null { return this.selected; }
   get active(): Impact | undefined { return this.items.find(impact => impact.id === this.selected); }

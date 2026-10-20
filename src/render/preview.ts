@@ -1,9 +1,11 @@
+import { renderCompositeImage } from './renderShardImage';
+import type { ShardComposition } from '../state/shardImageState';
 import type { Impact } from '../state/editorState';
 import { renderImpacts } from './renderImpacts';
 import { containRect, imageToScreen, type Rect } from '../core/geometry';
 
 export function renderPreview(canvas: HTMLCanvasElement, image: HTMLImageElement | null,
-  impacts: readonly Impact[], selectedId: number | null): Rect | null {
+  impacts: readonly Impact[], selectedId: number | null, composition?: ShardComposition): Rect | null {
   const bounds = canvas.getBoundingClientRect();
   if (bounds.width <= 0 || bounds.height <= 0) return null;
   const dpr = window.devicePixelRatio || 1;
@@ -15,10 +17,11 @@ export function renderPreview(canvas: HTMLCanvasElement, image: HTMLImageElement
   if (!image) return null;
   const size = { width: image.naturalWidth, height: image.naturalHeight };
   const rect = containRect(size, { left: 0, top: 0, width: bounds.width, height: bounds.height });
-  ctx.drawImage(image, rect.left, rect.top, rect.width, rect.height);
+  if (!composition?.plan) ctx.drawImage(image, rect.left, rect.top, rect.width, rect.height);
   ctx.save();
   ctx.translate(rect.left, rect.top);
   ctx.scale(rect.width / size.width, rect.height / size.height);
+  if (composition?.plan) renderCompositeImage(ctx, image, size, composition);
   renderImpacts(ctx, impacts, size);
   ctx.restore();
   ctx.save();

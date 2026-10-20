@@ -63,3 +63,10 @@ it('極小画像・大画像・細長い画像でも有限な変形を生成す�
   expect(plan.motions.every(m=>Math.hypot(m.dx,m.dy)<=12)).toBe(true);
  }
 });
+it('明暗差と隙間はずれ・回転・対象選択と独立し、保護破片は明暗も変更しない',()=>{
+ const {graph,scene}=fixture();const base=createShardTransformPlan(graph,INSPECTOR_SIZE,42,{displacement:40,rotation:30},scene.protectedCores);
+ const other=createShardTransformPlan(graph,INSPECTOR_SIZE,42,{displacement:40,rotation:30,reflection:100,gap:100},scene.protectedCores);
+ expect(other.gap).toBe(1);for(let i=0;i<base.motions.length;i++){const a=base.motions[i],b=other.motions[i];expect([b.dx,b.dy,b.angle,b.reason]).toEqual([a.dx,a.dy,a.angle,a.reason]);expect(Math.abs(b.brightness!)).toBeLessThanOrEqual(.08);if(b.reason==='protected')expect(b.brightness).toBe(0);}
+ expect(other.motions.some(m=>m.brightness!==0)).toBe(true);
+ for(const key of ['reflection','gap'] as const)expect(()=>createShardTransformPlan(graph,INSPECTOR_SIZE,42,{displacement:0,rotation:0,[key]:101})).toThrow();
+});

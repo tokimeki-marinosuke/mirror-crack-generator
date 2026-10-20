@@ -143,3 +143,5 @@ Vite の `base` は `/mirror-crack-generator/` に設定しています。
 第2段階の開発用ページとPlaywright検証は [破片領域の可視化](SHARD_INSPECTOR.md) を参照。
 
 第3段階の開発ページ・シード付き画像変形と検証は [破片画像のずれ・回転](SHARD_MOTION.md) を参照。
+
+第4段階の製品UI・明暗差・隙間・合成PNGへの接続は [破片画像の製品接続](SHARD_COMPOSITE.md) を参照。
