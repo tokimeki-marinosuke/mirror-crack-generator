@@ -140,3 +140,14 @@ it('中心線の変更で破断面を更新し、元のシードに戻すと同�
   expect(state.active!.fracture).toEqual(initial);
   state.updateSurface({ widthPercent: 0 }); expect(state.active!.fracture!.faces).toEqual([]);
 });
+it('欠け密度だけの変更は中心線と別の衝撃点を保持し、暗部変更は欠けを再利用する', () => {
+  const state = new EditorState({ width: 800, height: 500 });
+  const other = state.add({ x: 100, y: 100 }); state.add({ x: 400, y: 250 });
+  state.updateSurface({ widthPercent: 80 }); const pattern = state.active!.pattern;
+  state.updateSurface({ chipDensity: 100 }); const fracture = state.active!.fracture;
+  expect(state.active!.pattern).toBe(pattern);
+  expect(state.impacts[0]).toBe(other);
+  expect(fracture!.faces.some(f => f.kind === 'chip')).toBe(true);
+  state.updateSurface({ darkness: 20 });
+  expect(state.active!.fracture).toBe(fracture);
+});

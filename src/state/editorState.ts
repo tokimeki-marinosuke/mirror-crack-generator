@@ -64,19 +64,19 @@ export class EditorState {
       geometryKeys.some(key => params[key] !== current.params[key]);
     const pattern = geometryChanged ? generateCracks(this.size, origin, seed, params) : current.pattern;
     const fracture = geometryChanged && current.surface
-      ? generateFractureSurface(pattern, this.size, current.surface.widthPercent) : current.fracture;
+      ? generateFractureSurface(pattern, this.size, current.surface.widthPercent, current.surface.chipDensity) : current.fracture;
     const next = { ...current, origin, seed, params, preset: patch.preset ?? current.preset, pattern, fracture };
     this.items = this.items.map(impact => impact.id === current.id ? next : impact);
   }
-  /** 幅変更だけ破断面を再生成。暗部・反射・線幅で中心線を再生成しない。 */
-  updateSurface(patch: Partial<Pick<SurfaceSettings, 'widthPercent' | 'darkness'>>): void {
+  /** 幅・欠け密度変更だけ破断面を再生成。暗部・反射・線幅で中心線を再生成しない。 */
+  updateSurface(patch: Partial<SurfaceSettings>): void {
     const current = this.active;
     if (!current) return;
     const surface = resolveFractureSettings(current.params, {
       surface: { ...DEFAULT_SURFACE_SETTINGS, ...current.surface, ...patch },
     }).surface;
-    const fracture = surface.widthPercent !== (current.surface?.widthPercent ?? 0) || !current.fracture
-      ? generateFractureSurface(current.pattern, this.size, surface.widthPercent) : current.fracture;
+    const fracture = surface.widthPercent !== (current.surface?.widthPercent ?? 0) || surface.chipDensity !== (current.surface?.chipDensity ?? 0) || !current.fracture
+      ? generateFractureSurface(current.pattern, this.size, surface.widthPercent, surface.chipDensity) : current.fracture;
     this.items = this.items.map(impact => impact.id === current.id ? { ...current, surface, fracture } : impact);
   }
   regenerate(): void {

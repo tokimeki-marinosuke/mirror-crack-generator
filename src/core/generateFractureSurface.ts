@@ -7,6 +7,9 @@ export const MAX_FRACTURE_FACES = 1024;
 
 export type FractureFace = {
   pathId: string;
+  /** 欠けは経路上の安定位置に接続した三角形。省略時は従来の帯。 */
+  kind?: 'chip';
+  position?: number;
   polygon: Point[];
   reflection: Point[];
   reflectionWidth: number;
@@ -46,7 +49,8 @@ function normalAt(path: CrackPath, t: number): Point {
 }
 
 /** 主要経路の可視区間だけを帯状多角形にする。画像／中心領域の最終クリップは描画段階で共有する。 */
-export function generateFractureSurface(pattern: CrackPattern, size: Size, widthPercent: number): FractureGeometry {
+export function generateFractureSurface(pattern: CrackPattern, size: Size, widthPercent: number, chipDensity = 0): FractureGeometry {
+  if (!Number.isFinite(chipDensity) || chipDensity < 0 || chipDensity > 100) throw new Error('欠け密度は0〜100%で指定してください。');
   if (!Number.isFinite(widthPercent) || widthPercent < 0 || widthPercent > 100) throw new Error('破断面幅は0〜100%で指定してください。');
   if (![size.width, size.height].every(n => Number.isFinite(n) && n > 0)) throw new Error('画像サイズが不正です。');
   const maximumWidth = Math.min(24, Math.min(size.width, size.height) * 0.03) * widthPercent / 100;
@@ -94,6 +98,37 @@ export function generateFractureSurface(pattern: CrackPattern, size: Size, width
       faces.push({ pathId: path.id, polygon: [...left, ...right.slice().reverse()], reflection,
         reflectionWidth: Math.min(1.2, maximumWidth * 0.12), region: first.region,
         strength: pattern.segments[first.segmentIndex].strength ?? 1 });
+    }
+  }
+  // 帯の後に追加。固定セル内の候補を使い、密度や中心の可視範囲で乱数位置をずらさない。
+  if (chipDensity > 0) for (const edges of grouped.values()) {
+    const first = edges[0], path = paths.get(first.pathId)!;
+    const cells = first.region === 'center' ? 96 : 24;
+    const sourceStrength = pattern.segments[first.segmentIndex].strength ?? 1;
+    for (let i = 0; i < cells; i++) {
+      // 最大密度でも全セルを埋めず、鋸歯状の等間隔模様を避ける。
+      if (noise(pattern.seed, path.id, i, 14) < (first.region === 'center' ? 0.35 : 0.6)) continue;
+      const t = (i + 0.1 + noise(pattern.seed, path.id, i, 10) * 0.8) / cells;
+      const rank = noise(pattern.seed, path.id, i, 11) * 0.85;
+      const strength = clamp((chipDensity / 100 - rank) / 0.15) * sourceStrength;
+      if (strength <= 0) continue;
+      const edge = edges.find(e => t > e.start.position && t < e.end.position);
+      if (!edge) continue;
+      const halfSpan = Math.min(0.3 / cells, maximumWidth * 0.7 / path.length);
+      // 候補の底辺を可視区間内に保ち、未描画経路に浮いた欠けを作らない。
+      const covered = (position: number) => edges.some(e => position >= e.start.position && position <= e.end.position);
+      const a = pointAt(path, covered(t - halfSpan) ? t - halfSpan : edge.start.position);
+      const b = pointAt(path, covered(t + halfSpan) ? t + halfSpan : edge.end.position);
+      if (Math.hypot(b.x - a.x, b.y - a.y) < 0.05) continue;
+      const p = pointAt(path, t), n = normalAt(path, t);
+      const side = noise(pattern.seed, path.id, i, 12) < 0.5 ? -1 : 1;
+      const depth = maximumWidth * (0.65 + noise(pattern.seed, path.id, i, 13) * 1.4) * Math.pow(Math.sin(Math.PI * t), 0.35);
+      const tip = { x: p.x + n.x * depth * side, y: p.y + n.y * depth * side };
+      if (faces.length >= MAX_FRACTURE_FACES || vertexCount + 3 > MAX_FRACTURE_VERTICES) return { faces, maximumWidth };
+      vertexCount += 3;
+      faces.push({ kind: 'chip', position: t, pathId: path.id, polygon: [a, tip, b],
+        reflection: side < 0 ? [a, tip] : [tip, b], reflectionWidth: Math.min(1.2, maximumWidth * 0.12),
+        region: first.region, strength });
     }
   }
   return { faces, maximumWidth };

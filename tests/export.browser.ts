@@ -137,6 +137,34 @@ const tests: [string, () => Promise<void>][] = [
     editor.update({ params: { opacity: 0 } });
     assert((await pixels(await exportPng(image, editor.impacts, 'cracks'))).data.every(v => v === 0), '不透明度0で破断面も透明');
   }],
+  ['最大欠け密度の三角形を透過PNGへ描画し、中心保護と元画像の透過を維持', async () => {
+    const editor = new EditorState(size); editor.add({ x: 50, y: 50 });
+    editor.update({ params: { centerRadius: 25, centerDensity: 0, opacity: 100, highlight: 100 } });
+    const pattern = editor.active!.pattern;
+    editor.updateSurface({ widthPercent: 100, darkness: 100, chipDensity: 100 });
+    const geometry = editor.active!.fracture;
+    const wide = await pixels(await exportPng(image, editor.impacts, 'cracks'));
+    const composite = await pixels(await exportPng(image, editor.impacts, 'composite'));
+    const radius = pattern.centerRadius!;
+    let darkPixels = 0;
+    for (let y = 0; y < size.height; y++) for (let x = 0; x < size.width; x++) {
+      const index = (y * size.width + x) * 4;
+      if (Math.hypot(x + 0.5 - 50, y + 0.5 - 50) < radius - 2) {
+        assert(wide.data[index + 3] === 0, '破断面と反射が中心内に入らない');
+        assert(composite.data.slice(index, index + 4).every((v, i) => v === baseline.data[index + i]), '保護領域の元画像RGBAを保持');
+      } else if (wide.data[index + 3] > 0 && wide.data[index] < 40) darkPixels++;
+    }
+    assert(darkPixels > 0, '透過レイヤーに暗い破断面を含む');
+    editor.updateSurface({ darkness: 0 });
+    assert(editor.active!.pattern === pattern && editor.active!.fracture === geometry, '暗部変更で幾何を再生成しない');
+    const noDark = await pixels(await exportPng(image, editor.impacts, 'cracks'));
+    assert(!wide.data.every((v, i) => v === noDark.data[i]), '暗部スライダーの効果');
+    editor.update({ params: { highlight: 0 } });
+    const noReflection = await pixels(await exportPng(image, editor.impacts, 'cracks'));
+    assert(!noDark.data.every((v, i) => v === noReflection.data[i]), '反射スライダーの効果');
+    editor.update({ params: { opacity: 0 } });
+    assert((await pixels(await exportPng(image, editor.impacts, 'cracks'))).data.every(v => v === 0), '不透明度0で破断面も透明');
+  }],
   ['幅0へ戻すと従来PNGに一致し、暗部・反射0では元画像を消去しない', async () => {
     const editor = new EditorState(size); editor.add({ x: 160, y: 120 }); editor.update({ params: { highlight: 0 } });
     const original = await pixels(await exportPng(image, editor.impacts, 'composite'));
