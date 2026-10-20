@@ -1,10 +1,11 @@
+import { TopologyBuilder, positionKey, type CrackTopology } from './crackTopology';
 import { clipSegment, type Point, type Segment, type Size } from './geometry';
 import { splitAtCircle } from './centerGeometry';
 import { createRandom } from './random';
 
 export type CrackType = 'radial' | 'concentric' | 'branch';
 export type CrackSegment = Segment & { type: CrackType; strength?: number };
-export type CrackPattern = { origin: Point; segments: CrackSegment[]; seed: number; centerRadius?: number; protectedRadius?: number };
+export type CrackPattern = { origin: Point; segments: CrackSegment[]; seed: number; centerRadius?: number; protectedRadius?: number; topology?: CrackTopology };
 export type CrackParams = {
   radialCount: number;
   lengthPercent: number;
@@ -25,7 +26,7 @@ function range(value: number, min: number, max: number, integer = false): void {
   }
 }
 const clamp = (value: number) => Math.max(0, Math.min(1, value));
-type Candidate = CrackSegment & { parents: number[]; centerOnly?: boolean; rank?: number };
+type Candidate = CrackSegment & { pathId: string; parents: number[]; centerOnly?: boolean; rank?: number };
 
 /** DOM・Canvas非依存。外側を先に確定し、中心密度が外側の乱数や予算を変えない。 */
 export function generateCracks(size: Size, origin: Point, seed: number,
@@ -64,6 +65,8 @@ export function generateCracks(size: Size, origin: Point, seed: number,
     }
     return path;
   });
+  const topology = new TopologyBuilder();
+  rays.forEach((ray, i) => topology.register(`radial/${i}`, 'radial', ray));
   // 放射線の線分上に接続頂点を挿入する。同じ半径の再利用では同じ頂点を返す。
   const anchor = (ray: Point[], r: number): Point | null => {
     if (r <= 0 || r > distance(ray[ray.length - 1])) return null;
@@ -93,8 +96,12 @@ export function generateCracks(size: Size, origin: Point, seed: number,
       const jitter = (webRandom() - 0.5) * 0.14 * complexity;
       const mid = { x: (start.x + end.x) / 2 - (end.y - start.y) * jitter,
         y: (start.y + end.y) / 2 + (end.x - start.x) * jitter };
-      links.push({ start, end: mid, type: 'concentric', parents: [i, next] },
-        { start: mid, end, type: 'concentric', parents: [i, next] });
+      const pathId = `web/${ring}/${i}`;
+      topology.register(pathId, 'concentric', [start, mid, end], [
+        topology.connection(0, `radial/${i}`, start), topology.connection(1, `radial/${next}`, end),
+      ]);
+      links.push({ start, end: mid, type: 'concentric', pathId, parents: [i, next] },
+        { start: mid, end, type: 'concentric', pathId, parents: [i, next] });
     }
   }
   // 中心の細かな網目。候補と接続頂点は密度に依存させず、強度で連続的に出現させる。
@@ -105,13 +112,19 @@ export function generateCracks(size: Size, origin: Point, seed: number,
       const start = anchor(rays[i], r * (0.62 + centerRandom() * 0.55));
       const end = anchor(rays[next], r * (0.62 + centerRandom() * 0.55));
       const rank = centerRandom();
-      if (start && end) links.push({ start, end, type: 'branch', parents: [i, next], centerOnly: true, rank });
+      if (start && end) {
+        const pathId = `center-web/${ring}/${i}`;
+        topology.register(pathId, 'branch', [start, end], [
+          topology.connection(0, `radial/${i}`, start), topology.connection(1, `radial/${next}`, end),
+        ]);
+        links.push({ start, end, type: 'branch', pathId, parents: [i, next], centerOnly: true, rank });
+      }
     }
   }
   const raw: Candidate[] = [];
   for (let i = 0; i < rays.length; i++) {
     const ray = rays[i];
-    for (let j = 1; j < ray.length; j++) raw.push({ start: ray[j - 1], end: ray[j], type: 'radial', parents: [i] });
+    for (let j = 1; j < ray.length; j++) raw.push({ start: ray[j - 1], end: ray[j], type: 'radial', pathId: `radial/${i}`, parents: [i] });
   }
   raw.push(...links.filter(link => !link.centerOnly));
   // 分岐は既存頂点から外向きに短く伸ばす。候補は各放射線につき最大steps個。
@@ -119,6 +132,8 @@ export function generateCracks(size: Size, origin: Point, seed: number,
     const candidates = rays[i].filter((_, j) => j > 0 && j % 3 === 0).slice(0, steps);
     for (const start of candidates) {
       if (branchRandom() > complexity * 0.35) continue;
+      const pathId = `branch/${i}/${positionKey(topology.position(`radial/${i}`, start))}`;
+      const reference = [start];
       let point = start;
       let heading = Math.atan2(start.y - origin.y, start.x - origin.x)
         + (branchRandom() < 0.5 ? -1 : 1) * (0.3 + branchRandom() * 0.6);
@@ -127,8 +142,10 @@ export function generateCracks(size: Size, origin: Point, seed: number,
       for (let j = 0; j < count; j++) {
         heading += (branchRandom() - 0.5) * 0.12;
         const end = { x: point.x + Math.cos(heading) * stepLength, y: point.y + Math.sin(heading) * stepLength };
-        raw.push({ start: point, end, type: 'branch', parents: [i] }); point = end;
+        raw.push({ start: point, end, type: 'branch', pathId, parents: [i] }); point = end;
+        reference.push(end);
       }
+      topology.register(pathId, 'branch', reference, [topology.connection(0, `radial/${i}`, start)]);
     }
   }
   raw.push(...links.filter(link => link.centerOnly));
@@ -137,7 +154,10 @@ export function generateCracks(size: Size, origin: Point, seed: number,
   const add = (part: Segment, candidate: Candidate, strength?: number) => {
     if (segments.length >= params.maxSegments) return;
     const clipped = clipSegment(part, size);
-    if (clipped) segments.push({ ...clipped, type: candidate.type, ...(strength === undefined ? {} : { strength }) });
+    if (clipped) {
+      topology.add(segments.length, clipped, candidate.pathId, strength === undefined ? 'outer' : 'center');
+      segments.push({ ...clipped, type: candidate.type, ...(strength === undefined ? {} : { strength }) });
+    }
   };
   // 外側を優先して全て確定。中心が増えても外側の予算を奪わない。
   for (const candidate of raw) {
@@ -152,5 +172,5 @@ export function generateCracks(size: Size, origin: Point, seed: number,
     if (candidate.centerOnly) strength *= clamp((density - 0.3 - (candidate.rank ?? 0) * 0.5) / 0.2);
     if (strength > 0) add(part, candidate, strength);
   }
-  return { origin: { ...origin }, segments, seed, ...(radius > 0 ? { centerRadius: radius } : {}), ...(density === 0 && radius > 0 ? { protectedRadius: radius } : {}) };
+  return { origin: { ...origin }, segments, seed, topology: topology.finish(origin, radius, params.centerDensity), ...(radius > 0 ? { centerRadius: radius } : {}), ...(density === 0 && radius > 0 ? { protectedRadius: radius } : {}) };
 }
