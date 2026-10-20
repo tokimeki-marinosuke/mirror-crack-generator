@@ -137,3 +137,5 @@ Vite の `base` は `/mirror-crack-generator/` に設定しています。
 第3段階の純粋な欠け生成・キャッシュ・比較ページは [欠けと中心破砕](FRACTURE_CHIPS.md) を参照。
 
 第4段階の製品UI・衝撃マクロ・プリセットとPlaywright確認方法は [操作UIとプリセット](FRACTURE_CONTROLS.md) を参照。
+
+画像変形に向けた第1段階の平面分割と安全上限は [破片領域の抽出](SHARD_REGIONS.md) を参照。
