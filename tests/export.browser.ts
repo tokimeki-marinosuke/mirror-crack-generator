@@ -90,6 +90,25 @@ const tests: [string, () => Promise<void>][] = [
     assert(alpha(first.data, 170, 120) > 0 && alpha(first.data, 170, 180) > 0, '両方の点を描画');
     assert(first.data.every((value, i) => value === repeat.data[i]), '繰り返しPNGの画素一致');
   }],
+  ['中心密度0で太線・ハイライトも中心内に入らず、合成では元画像を保持', async () => {
+    const editor = new EditorState(size);
+    editor.add({ x: 50, y: 50 });
+    for (const preset of ['realistic', 'anime'] as const) {
+      editor.update({ preset, params: { centerRadius: 25, centerDensity: 0, lineWidth: 6, highlight: 100 } });
+      const radius = editor.active!.pattern.centerRadius!;
+      const cracks = await pixels(await exportPng(image, editor.impacts, 'cracks'));
+      const composite = await pixels(await exportPng(image, editor.impacts, 'composite'));
+      let visible = false;
+      for (let y = 0; y < size.height; y++) for (let x = 0; x < size.width; x++) {
+        const index = (y * size.width + x) * 4;
+        if (Math.hypot(x + 0.5 - 50, y + 0.5 - 50) < radius - 2) {
+          assert(cracks.data[index + 3] === 0, '中心内の亀裂レイヤーが透明');
+          assert(composite.data.slice(index, index + 4).every((value, i) => value === baseline.data[index + i]), '中心内の元画像RGBAを保持');
+        } else if (cracks.data[index + 3] > 0) visible = true;
+      }
+      assert(visible, '外側の亀裂は表示する');
+    }
+  }],
   ['大きい画像も縮小せずPNG出力（2048×1024）', async () => {
     const big = await loadImage(new File([await asBlob(canvas(2048, 1024))], 'large.png', { type: 'image/png' }));
     const output = await pixels(await exportPng(big, [], 'composite'));

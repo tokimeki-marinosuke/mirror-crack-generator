@@ -14,11 +14,11 @@ export type Impact = {
 };
 export const PRESETS: Record<StylePreset, Readonly<ImpactParams>> = {
   realistic: Object.freeze({ ...DEFAULT_CRACK_PARAMS, radialCount: 16, complexity: 75,
-    concentricDensity: 50, lineWidth: 1, opacity: 85, highlight: 25 }),
+    concentricDensity: 50, centerRadius: 20, centerDensity: 40, lineWidth: 1, opacity: 85, highlight: 25 }),
   anime: Object.freeze({ ...DEFAULT_CRACK_PARAMS, radialCount: 8, complexity: 25,
-    concentricDensity: 25, lineWidth: 3, opacity: 100, highlight: 65 }),
+    concentricDensity: 25, centerRadius: 25, centerDensity: 25, lineWidth: 3, opacity: 100, highlight: 65 }),
 };
-const geometryKeys = ['radialCount', 'lengthPercent', 'complexity', 'concentricDensity', 'maxSegments'] as const;
+const geometryKeys = ['radialCount', 'lengthPercent', 'complexity', 'concentricDensity', 'centerRadius', 'centerDensity', 'maxSegments'] as const;
 
 /** 編集状態はUI/Canvasに依存せず、変更した衝撃点だけを再生成する。 */
 export class EditorState {

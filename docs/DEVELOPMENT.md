@@ -113,3 +113,18 @@ GitHub の Settings → Pages → Build and deployment → Source を **GitHub A
 Vite の `base` は `/mirror-crack-generator/` に設定しています。
 ソースの `index.html` を直接配信せず、必ずビルド済み `dist` を配信してください。
 ローカルの開発・プレビューでも `/mirror-crack-generator/` を開きます。
+
+## 中心制御とアルゴリズム比較
+
+中心半径・密度の仕様と乱数系列の分離は [設計](../ARCHITECTURE.md#生成アルゴリズム改善) を参照してください。
+中心密度は整数プリセットで分岐せず、固定された候補の出現強度を連続的に変更します。
+中心密度0では全線分とその太さ・ハイライトを円外に制限します。
+
+`npm run dev` 実行後、`/mirror-crack-generator/tests/algorithm.html` で旧版と新版を比較できます。
+`tests/fixtures/generateCracks.v1.ts` は旧版の比較専用スナップショットで、本番バンドルには含めません。
+[比較画像](algorithm-comparison.png)は共通のシード42、主要線12本、長さ80%、複雑さ55%、網目45%、
+描画線幅3pxを使用し、新版のみ中心半径25%、密度0/50/100%を指定しています。
+
+`centerCracks.test.ts` は中心円と線分の最短距離、外側の完全一致、密度の連続変化、
+上限・境界・極端な設定を検証します。PNGの実ブラウザテストには中心のRGBA保護も含みます。
+全ての線分の交差除去や完全な破片グラフの構築は行っていません。

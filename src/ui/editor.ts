@@ -9,6 +9,8 @@ const sliders = [
   { key: 'lengthPercent', label: '長さ（画像短辺基準）', min: 10, max: 150, step: 1, unit: '%' },
   { key: 'complexity', label: '複雑さ', min: 0, max: 100, step: 1, unit: '%' },
   { key: 'concentricDensity', label: '同心円密度', min: 0, max: 100, step: 1, unit: '%' },
+  { key: 'centerRadius', label: '中心領域の半径（基準長比）', min: 0, max: 80, step: 1, unit: '%' },
+  { key: 'centerDensity', label: '中心の亀裂密度（0で中心を残す）', min: 0, max: 100, step: 1, unit: '%' },
   { key: 'lineWidth', label: '線幅（元画像基準）', min: 0.5, max: 6, step: 0.1, unit: 'px' },
   { key: 'highlight', label: 'ハイライト', min: 0, max: 100, step: 1, unit: '%' },
   { key: 'opacity', label: '不透明度', min: 0, max: 100, step: 1, unit: '%' },

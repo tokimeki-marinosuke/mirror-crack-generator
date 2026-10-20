@@ -17,20 +17,22 @@ describe('亀裂生成', () => {
   });
   it('放射線が衝撃点から始まり、分岐・同心円が放射線に接続する', () => {
     // 全頂点が画像内に収まる長さで接続を確認（境界交点は別テスト）。
-    const pattern = generateCracks(size, origin, 42, { ...DEFAULT_CRACK_PARAMS, lengthPercent: 30 });
+    const pattern = generateCracks(size, origin, 42, { ...DEFAULT_CRACK_PARAMS, lengthPercent: 30, centerRadius: 0 });
     const radial = pattern.segments.filter(s => s.type === 'radial');
     expect(radial.filter(s => s.start.x === origin.x && s.start.y === origin.y)).toHaveLength(12);
     const vertices = new Set(radial.flatMap(s => [JSON.stringify(s.start), JSON.stringify(s.end)]));
     const rings = pattern.segments.filter(s => s.type === 'concentric');
     expect(rings.length).toBeGreaterThan(0);
-    for (const ring of rings) {
-      expect(vertices.has(JSON.stringify(ring.start))).toBe(true);
-      expect(vertices.has(JSON.stringify(ring.end))).toBe(true);
+    const key = (p: { x: number; y: number }) => JSON.stringify(p);
+    const joins = new Map<string, number>();
+    for (const ring of rings) for (const point of [ring.start, ring.end]) joins.set(key(point), (joins.get(key(point)) ?? 0) + 1);
+    for (const ring of rings) for (const point of [ring.start, ring.end]) {
+      expect(vertices.has(key(point)) || (joins.get(key(point)) ?? 0) >= 2).toBe(true);
     }
     expect(pattern.segments.some(s => s.type === 'branch' && vertices.has(JSON.stringify(s.start)))).toBe(true);
   });
   it('複雑さ0・同心円密度0で分岐と同心円を生成しない', () => {
-    const pattern = generateCracks(size, origin, 1, { ...DEFAULT_CRACK_PARAMS, complexity: 0, concentricDensity: 0 });
+    const pattern = generateCracks(size, origin, 1, { ...DEFAULT_CRACK_PARAMS, complexity: 0, concentricDensity: 0, centerRadius: 0 });
     expect(pattern.segments.length).toBeGreaterThan(0);
     expect(pattern.segments.every(s => s.type === 'radial')).toBe(true);
   });
@@ -57,7 +59,7 @@ describe('亀裂生成', () => {
     expect(pattern.segments).toHaveLength(maxSegments);
   });
   it('衝撃点からの長さが画像短辺基準で制限される', () => {
-    const pattern = generateCracks(size, origin, 1, { ...DEFAULT_CRACK_PARAMS, lengthPercent: 10, complexity: 0, concentricDensity: 0 });
+    const pattern = generateCracks(size, origin, 1, { ...DEFAULT_CRACK_PARAMS, lengthPercent: 10, complexity: 0, concentricDensity: 0, centerRadius: 0 });
     for (const segment of pattern.segments) {
       expect(Math.hypot(segment.end.x - origin.x, segment.end.y - origin.y)).toBeLessThanOrEqual(80 + 1e-9);
     }

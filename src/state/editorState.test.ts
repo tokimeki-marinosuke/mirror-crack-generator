@@ -100,3 +100,15 @@ describe('衝撃点ごとの編集状態', () => {
     expect(state.impacts).toHaveLength(1);
   });
 });
+
+it.each(['centerRadius', 'centerDensity'] as const)('%s は選択点だけを再生成し、シードを保持する', key => {
+  const state = new EditorState({ width: 800, height: 600 });
+  const first = state.add({ x: 200, y: 200 });
+  const second = state.add({ x: 600, y: 400 });
+  state.update({ params: { [key]: 0 } });
+  expect(state.impacts[0]).toBe(first);
+  expect(state.active?.seed).toBe(second.seed);
+  expect(state.active?.pattern).not.toEqual(second.pattern);
+  state.update({ params: { [key]: second.params[key] } });
+  expect(state.active?.pattern).toEqual(second.pattern);
+});
