@@ -1,0 +1,21 @@
+<!doctype html><html lang="ja"><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ガラス材質の基盤比較 — 第1段階</title>
+<style>body{font:15px system-ui;background:#10141d;color:#e9edf5;margin:24px}h1{font-size:25px}p{line-height:1.8;color:#b5c4d8}.controls{display:flex;flex-wrap:wrap;gap:18px;padding:18px;background:#1a202d;border-radius:10px}label{display:grid;gap:6px}select,input{font:inherit;color:inherit;background:#252f40;border:1px solid #526179;border-radius:5px;padding:7px}input[type=number]{width:100px}input[type=range]{padding:0;accent-color:#5ff5d2}output{color:#5ff5d2}.pair{display:grid;grid-template-columns:1fr 1fr;gap:20px}figure{margin:0}figcaption{margin:14px 0}canvas{display:block;width:100%;height:auto;background:repeating-conic-gradient(#334155 0% 25%,#1e293b 0% 50%) 0/16px 16px}#diagnostic{max-width:800px}.note{border-left:3px solid #5ff5d2;padding-left:14px}[data-status=failed]{color:#ff9999}@media(max-width:900px){.pair{grid-template-columns:1fr}}</style>
+<h1>ガラス材質の基盤比較 · 第1段階</h1>
+<p class="note">新しい厚み・反射の視覚効果は未実装です。同じ画像・シード・亀裂・破片変形を使い、左右の画像が完全一致することを確認します。本番UIには追加していません。</p>
+<div class="controls">
+<label>画像<select id="sample"><option value="light">明るい背景</option><option value="dark">暗い背景</option><option value="transparent">透過画像</option></select></label>
+<label>衝撃点<select id="count"><option value="1">1点</option><option value="2">2点</option></select></label>
+<label>シード<input id="seed" type="number" value="42" step="1"></label>
+<label>中心密度<select id="density"><option value="0">0%（保護）</option><option value="50" selected>50%</option><option value="100">100%</option></select></label>
+<label>既存の破断面幅<select id="width"><option value="0">0%</option><option value="60" selected>60%</option></select></label>
+<label><span>既存の破片変形</span><input id="motion" type="checkbox" checked></label>
+<label><span>材質設定を有効化（描画は未実装）</span><input id="enabled" type="checkbox"></label>
+<label>光源方向 <output id="light-value"></output><input id="light" type="range" min="0" max="360" value="225"></label>
+<label>厚みの設定値 <output id="thickness-value"></output><input id="thickness" type="range" min="0" max="100" value="0"></label>
+</div>
+<div class="pair"><figure><figcaption>旧描画の入口</figcaption><canvas id="baseline"></canvas></figure><figure><figcaption>材質描画の入口（第1段階は旧描画へ委譲）</figcaption><canvas id="material"></canvas></figure></div>
+<p id="summary" role="status">読み込み中…</p>
+<figure><figcaption>幾何データの診断：赤＝左輪郭、青＝右輪郭、矢印＝局所法線。黄色の矢印＝共通光源。診断図は画素比較に含めません。</figcaption><canvas id="diagnostic"></canvas></figure>
+<p id="geometry-status"></p><p>光源・厚みの変更では既存形状と材質用幾何を再生成しません。ここでいう厚みは独立した将来の断面表現の設定で、既存の隙間や線幅を太くする処理ではありません。</p>
+<script type="module" src="./glass-material.browser.ts"></script></html>

@@ -145,3 +145,5 @@ Vite の `base` は `/mirror-crack-generator/` に設定しています。
 第3段階の開発ページ・シード付き画像変形と検証は [破片画像のずれ・回転](SHARD_MOTION.md) を参照。
 
 第4段階の製品UI・明暗差・隙間・合成PNGへの接続は [破片画像の製品接続](SHARD_COMPOSITE.md) を参照。
+
+ガラス材質描画の第1段階と旧描画との比較は [材質描画基盤](GLASS_MATERIAL_FOUNDATION.md) を参照。

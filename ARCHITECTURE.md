@@ -136,3 +136,11 @@ type Impact = { id: string; origin: Point; seed: number; preset: StylePreset; pa
 亀裂のみPNGは従来の描画経路を維持。全設定0・抽出失敗・閉境界なしでは元画像を維持する。
 明暗差と隙間は破片全体の保護と256個の対象制限を共用する。
 キャッシュ条件・設定の独立性・検証は [製品接続](docs/SHARD_COMPOSITE.md) を参照。
+
+## ガラス材質描画の基盤（第1段階）
+
+`core/glassMaterial.ts` が独立した材質設定と共通光源、`core/glassGeometry.ts` が既存の両側輪郭・局所法線・
+経路位置・破片辺との対応を保持する。既存の亀裂・破片は変更しない。
+`state/glassMaterialState.ts` は光源と幾何キャッシュを分離する開発用管理器。
+`render/renderGlassScene.ts` は現段階では従来描画へ委譲し、本番UI・出力経路へは未接続。
+詳細と比較ページは [材質描画基盤](docs/GLASS_MATERIAL_FOUNDATION.md) を参照。
