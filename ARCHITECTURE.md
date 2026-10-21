@@ -176,3 +176,10 @@ type Impact = { id: string; origin: Point; seed: number; preset: StylePreset; pa
 製品の `EditorState.glass` はclean、互換用の独立管理器はlegacy。cleanは旧破断面を輪郭準備・描画から除外し、
 材質無効/全効果0/フォールバックでも旧面を復活させない。線幅・反射幅・強度では亀裂経路と平面分割を変更しない。
 プレビューとPNGは同じcleanフレームを共有する。詳細は [新しい割れ鏡描画](docs/CRISP_MIRROR.md) を参照。
+
+## 調整範囲の拡張
+
+`core/effectRanges.ts` がUI強度65と旧最大の対応と上限を定義する。選択点のモデル値を保持してUIで順逆変換し、
+マクロ50の中立点を保つ。生成器の式・旧範囲の入力の再現性は維持し、検証上限のみ拡張する。
+映りの計画は任意のrangeモードを受け、旧APIはlegacy、製品状態はexpanded。強度変更で抽出グラフは変更しない。
+中心保護やアルファの実割合は再解釈しない。詳細は [調整範囲の対応](docs/EFFECT_RANGES.md) を参照。

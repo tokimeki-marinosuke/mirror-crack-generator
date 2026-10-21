@@ -1,3 +1,4 @@
+import { EXPANDED_LIMITS, effectivePercent, displayPercent, effectiveImpactStrength, displayImpactStrength } from '../core/effectRanges';
 import { GLASS_MATERIAL_PRESETS, isGlassMaterialActive, type GlassMaterialPreset } from '../core/glassMaterial';
 import { DEFAULT_SHARD_IMAGE_SETTINGS } from '../state/shardImageState';
 import type { SurfaceSettings } from '../state/fractureSettings';
@@ -8,13 +9,13 @@ import { renderPreview } from '../render/preview';
 import { EditorState, EFFECT_PRESETS, type EffectPreset, type ImpactParams, type StylePreset } from '../state/editorState';
 
 const sliders = [
-  { key: 'radialCount', label: '主要亀裂数', min: 4, max: 24, step: 1, unit: '本' },
-  { key: 'lengthPercent', label: '長さ（画像短辺基準）', min: 10, max: 150, step: 1, unit: '%' },
+  { key: 'radialCount', label: '主要亀裂数', min: 4, max: EXPANDED_LIMITS.radialCount, step: 1, unit: '本' },
+  { key: 'lengthPercent', label: '長さ（画像短辺基準）', min: 10, max: EXPANDED_LIMITS.lengthPercent, step: 1, unit: '%' },
   { key: 'complexity', label: '不規則性・分岐', min: 0, max: 100, step: 1, unit: '%' },
   { key: 'concentricDensity', label: '蜘蛛の巣の密度', min: 0, max: 100, step: 1, unit: '%' },
   { key: 'centerRadius', label: '中心領域の半径（基準長比）', min: 0, max: 80, step: 1, unit: '%' },
   { key: 'centerDensity', label: '中心の亀裂密度（0で中心を残す）', min: 0, max: 100, step: 1, unit: '%' },
-  { key: 'lineWidth', label: '黒い亀裂の太さ（元画像基準）', min: 0.5, max: 6, step: 0.1, unit: 'px' },
+  { key: 'lineWidth', label: '黒い亀裂の太さ（元画像基準）', min: 0.5, max: EXPANDED_LIMITS.lineWidth, step: 0.1, unit: 'px' },
   { key: 'opacity', label: '不透明度', min: 0, max: 100, step: 1, unit: '%' },
 ] as const;
 
@@ -76,7 +77,7 @@ export function mountEditor(root: HTMLElement): void {
       <p class="hint">厚み・反射幅・黒い亀裂の太さは独立です。65%付近が従来の材質最大効果の目安です。内部反射は合成PNGだけに適用し、保護領域と重なる破片全体を維持します。</p>
       </fieldset><p id="material-status" role="status"></p><hr><h2>画像全体の映り</h2>
       <fieldset id="shard-settings" disabled><legend class="sr-only">鏡の破片の画像変形</legend>
-      <p class="hint">全ての衝撃点で区切られた破片に適用します。亀裂の縁の反射・破断面幅とは別の設定です。</p>
+      <p class="hint">全ての衝撃点で区切られた破片に適用します。4項目とも65%が従来の最大効果です。100%ではさらに強くできます。</p>
       <button type="button" id="shard-demo">映りの変化を試す</button>
       ${shardSliders.map(s=>`<label class="control" for="shard-${s.key}">${s.label}<output id="shard-${s.key}-value">0%</output></label><input id="shard-${s.key}" type="range" min="0" max="100" step="1" value="0">`).join('')}
       <button type="button" id="shard-reset">映りの変化を0に戻す</button>
@@ -87,9 +88,9 @@ export function mountEditor(root: HTMLElement): void {
       <p class="hint">切り替えると調整値を初期化します。位置・シードは保持します。</p>
       <label class="control" for="impact-strength">衝撃の強さ<output id="impact-strength-value"></output></label>
       <input id="impact-strength" type="range" min="0" max="100" step="1" value="50">
-      <p class="hint">長さ・分岐をまとめて調整。個別に変更した項目を優先します。プリセットの選び直しで個別調整を解除します。中心保護・黒い亀裂の太さは保持します。</p>
+      <p class="hint">長さ・分岐をまとめて調整。個別に変更した項目を優先します。プリセットの選び直しで個別調整を解除します。中心保護・黒い亀裂の太さは保持します。50%は標準、65%が従来の最大です。</p>
       ${surfaceSliders.map(s => `<label class="control" for="surface-${s.key}">${s.label}<output id="surface-${s.key}-value"></output></label><input id="surface-${s.key}" type="range" min="0" max="100" step="1">`).join('')}
-      <p class="hint">黒い亀裂を太くしても経路や欠けの数は変わりません。反射幅は画像全体の「ガラス材質」で調整します。破片内の画像のずれ・回転は「画像全体の映り」で調整できます。</p>
+      <p class="hint">不規則性・蜘蛛の巣は65%が従来最大。数・長さ・黒線幅もスライダー位置約65%が旧上限です。中心保護・不透明度・黒線の濃さは実際の割合を維持します。黒線幅で経路や欠けの数は変わりません。反射幅は画像全体の「ガラス材質」で調整します。破片内の画像のずれ・回転は「画像全体の映り」で調整できます。</p>
       ${sliders.map(s => `<label class="control" for="${s.key}">${s.label}<output id="${s.key}-value"></output></label>
       <input type="range" id="${s.key}" min="${s.min}" max="${s.max}" step="${s.step}">`).join('')}
       <label class="control" for="seed">シード（整数）</label>
@@ -176,8 +177,8 @@ export function mountEditor(root: HTMLElement): void {
       ? `X: ${active.origin.x.toFixed(2)} / Y: ${active.origin.y.toFixed(2)} px` : '未指定';
     if (active) {
       preset.value = active.effectPreset ?? active.preset;
-      get<HTMLInputElement>('#impact-strength').value = String(active.impactStrength ?? 50);
-      get<HTMLOutputElement>('#impact-strength-value').value = `${active.impactStrength ?? 50}%`;
+      get<HTMLInputElement>('#impact-strength').value = String(Math.round(displayImpactStrength(active.impactStrength ?? 50)));
+      get<HTMLOutputElement>('#impact-strength-value').value = `${Math.round(displayImpactStrength(active.impactStrength ?? 50))}%`;
       for (const slider of surfaceSliders) {
         const value = active.surface?.[slider.key] ?? 0;
         get<HTMLInputElement>(`#surface-${slider.key}`).value = String(value);
@@ -186,8 +187,10 @@ export function mountEditor(root: HTMLElement): void {
       seed.value = String(active.seed);
       seed.setCustomValidity('');
       for (const slider of sliders) {
-        get<HTMLInputElement>(`#${slider.key}`).value = String(active.params[slider.key]);
-        get<HTMLOutputElement>(`#${slider.key}-value`).value = `${active.params[slider.key]} ${slider.unit}`;
+        const raw=active.params[slider.key];
+        const value=slider.key==='complexity'||slider.key==='concentricDensity'?Math.round(displayPercent(raw)):raw;
+        get<HTMLInputElement>(`#${slider.key}`).value = String(value);
+        get<HTMLOutputElement>(`#${slider.key}-value`).value = `${value} ${slider.unit}`;
       }
       status.textContent = `衝撃点 ${active.id} / ${state!.impacts.length}点 · シード ${active.seed} · ${active.pattern.segments.length}線分`;
     } else status.textContent = image ? '追加モードで画像上をクリックしてください。' : '画像を読み込むとプレビューが表示されます。';
@@ -278,7 +281,7 @@ export function mountEditor(root: HTMLElement): void {
     const control = get<HTMLInputElement>(`#${slider.key}`);
     control.addEventListener('input', () => {
       const value = control.valueAsNumber;
-      queue(slider.key, () => state?.update({ params: { [slider.key]: value } }));
+      queue(slider.key, () => state?.update({ params: { [slider.key]: slider.key==='complexity'||slider.key==='concentricDensity'?effectivePercent(value):value } }));
     });
   }
   for (const slider of surfaceSliders) {
@@ -290,7 +293,7 @@ export function mountEditor(root: HTMLElement): void {
   }
   get<HTMLInputElement>('#impact-strength').addEventListener('input', event => {
     const value = (event.target as HTMLInputElement).valueAsNumber;
-    queue('strength', () => state?.updateStrength(value));
+    queue('strength', () => state?.updateStrength(effectiveImpactStrength(value)));
   });
   for(const slider of shardSliders){
     const control=get<HTMLInputElement>(`#shard-${slider.key}`);

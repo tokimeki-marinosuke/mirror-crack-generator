@@ -12,7 +12,7 @@ export class ShardImageState {
   private extraction?: ShardExtraction;
   private composition?: ShardComposition;
   private extractionCount = 0;
-  constructor(private readonly size: Size, private readonly limits: Partial<ShardLimits> = {}) {}
+  constructor(private readonly size: Size, private readonly limits: Partial<ShardLimits> = {}, readonly range: 'legacy' | 'expanded' = 'legacy') {}
   get settings(): Readonly<ShardImageSettings> {return this.values;}
   get extractions(): number {return this.extractionCount;}
   update(patch: Partial<ShardImageSettings>): void {
@@ -48,6 +48,6 @@ export class ShardImageState {
     });
     // 既存衝撃点のシードから独立した画像変形用シードを合成する。
     let seed=2166136261;for(const impact of visible)seed=Math.imul(seed^(impact.seed>>>0),16777619);
-    return this.composition={extraction,plan:createShardTransformPlan(extraction.graph,this.size,seed>>>0,this.values,cores)};
+    return this.composition={extraction,plan:createShardTransformPlan(extraction.graph,this.size,seed>>>0,this.values,cores,this.range)};
   }
 }

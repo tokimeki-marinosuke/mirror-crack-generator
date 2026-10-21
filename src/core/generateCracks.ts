@@ -1,3 +1,4 @@
+import { EXPANDED_LIMITS } from './effectRanges';
 import { TopologyBuilder, positionKey, type CrackTopology } from './crackTopology';
 import { clipSegment, type Point, type Segment, type Size } from './geometry';
 import { splitAtCircle } from './centerGeometry';
@@ -33,8 +34,8 @@ export function generateCracks(size: Size, origin: Point, seed: number,
   params: Readonly<CrackParams> = DEFAULT_CRACK_PARAMS): CrackPattern {
   range(size.width, 1, Number.MAX_SAFE_INTEGER, true); range(size.height, 1, Number.MAX_SAFE_INTEGER, true);
   range(origin.x, 0, size.width); range(origin.y, 0, size.height);
-  range(params.radialCount, 4, 24, true); range(params.lengthPercent, 10, 150);
-  range(params.complexity, 0, 100); range(params.concentricDensity, 0, 100);
+  range(params.radialCount, 4, EXPANDED_LIMITS.radialCount, true); range(params.lengthPercent, 10, EXPANDED_LIMITS.lengthPercent);
+  range(params.complexity, 0, EXPANDED_LIMITS.complexity); range(params.concentricDensity, 0, EXPANDED_LIMITS.concentricDensity);
   range(params.centerRadius, 0, 80); range(params.centerDensity, 0, 100);
   range(params.maxSegments, 1, MAX_SEGMENTS, true);
   const radialRandom = createRandom(seed); // seed validation + no shared state

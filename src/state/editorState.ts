@@ -1,3 +1,4 @@
+import { EXPANDED_LIMITS } from '../core/effectRanges';
 import { GlassMaterialState } from './glassMaterialState';
 import { ShardImageState } from './shardImageState';
 import { generateFractureSurface, type FractureGeometry } from '../core/generateFractureSurface';
@@ -43,7 +44,7 @@ export class EditorState {
   private nextId = 1;
   readonly shards: ShardImageState;
   readonly glass: GlassMaterialState;
-  constructor(readonly size: Size) { this.shards = new ShardImageState(size); this.glass = new GlassMaterialState(size, 'clean'); this.glass.applyPreset('cinematic'); }
+  constructor(readonly size: Size) { this.shards = new ShardImageState(size, {}, 'expanded'); this.glass = new GlassMaterialState(size, 'clean'); this.glass.applyPreset('cinematic'); }
   get impacts(): readonly Impact[] { return this.items; }
   get selectedId(): number | null { return this.selected; }
   get active(): Impact | undefined { return this.items.find(impact => impact.id === this.selected); }
@@ -67,10 +68,10 @@ export class EditorState {
     const current = this.active;
     if (!current) return;
     const params = { ...(patch.preset ? PRESETS[patch.preset] : current.params), ...patch.params };
-    if (!Number.isFinite(params.lineWidth) || params.lineWidth < 0.5 || params.lineWidth > 6 ||
+    if (!Number.isFinite(params.lineWidth) || params.lineWidth < 0.5 || params.lineWidth > EXPANDED_LIMITS.lineWidth ||
         !Number.isFinite(params.opacity) || params.opacity < 0 || params.opacity > 100 ||
         !Number.isFinite(params.highlight) || params.highlight < 0 || params.highlight > 100) {
-      throw new Error('線幅は0.5〜6px、不透明度・ハイライトは0〜100%で指定してください。');
+      throw new Error('線幅は0.5〜9px、不透明度・ハイライトは0〜100%で指定してください。');
     }
     const origin = patch.origin ? { ...patch.origin } : current.origin;
     const seed = patch.seed ?? current.seed;

@@ -41,8 +41,7 @@ it('細線幅と破断面幅・暗部は独立し、破断面変更では中心�
   const thin = resolveFractureSettings(PRESETS.realistic, { overrides: { lineWidth: 6 } });
   expect(thin.surface).toEqual(base.surface);
 });
-it.each([NaN, Infinity, -1, 101])('不正な新設定%sを拒否', value => {
-  expect(() => resolveFractureSettings(PRESETS.realistic, { impactStrength: value })).toThrow();
+it.each([NaN, Infinity, -1, 101])('不正な破断面設定%sを拒否', value => {
   expect(() => resolveFractureSettings(PRESETS.realistic, { surface: { widthPercent: value } })).toThrow();
   expect(() => resolveFractureSettings(PRESETS.realistic, { surface: { darkness: value } })).toThrow();
 });
@@ -53,6 +52,10 @@ it('個別指定の不正値をマクロで隠さず、入力オブジェクト�
   resolveFractureSettings(base, { impactStrength: 100, overrides });
   expect(base).toEqual(PRESETS.realistic);
   expect(overrides).toEqual({ centerDensity: 0, lineWidth: 2 });
-  expect(() => resolveFractureSettings(base, { impactStrength: 100, overrides: { lengthPercent: 200 } })).toThrow();
+  expect(() => resolveFractureSettings(base, { impactStrength: 100, overrides: { lengthPercent: 226 } })).toThrow();
   expect(() => resolveFractureSettings(base, { overrides: { radialCount: 4.5 } })).toThrow();
+});
+
+it.each([NaN, Infinity, -1, 155])('不正な拡張マクロ%sを拒否', value => {
+  expect(() => resolveFractureSettings(PRESETS.realistic, { impactStrength: value })).toThrow();
 });
