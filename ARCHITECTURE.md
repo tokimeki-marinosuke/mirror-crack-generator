@@ -163,3 +163,9 @@ type Impact = { id: string; origin: Point; seed: number; preset: StylePreset; pa
 内部反射は合成のみ、断面・エッジ・微細欠けは透明レイヤーにも適用する。
 無効/全効果0/フレーム省略時は旧描画へ委譲する。
 操作、プリセット値、優先関係、検証は [ガラス材質の製品接続](docs/GLASS_MATERIAL_CONTROLS.md) を参照。
+
+## 材質描画の品質・負荷検証（第5段階）
+
+`glassShading.ts` は経路ハッシュと各頂点の陰影・厚み位置を1回計算し、隣接パネルへ共有する。
+新たな永続キャッシュや画像バッファは持たず、第4段階のパネル値とRGBAを維持する。
+比較専用スナップショット・高解像度検証・測定条件は [品質と負荷](docs/GLASS_MATERIAL_QUALITY.md) を参照。

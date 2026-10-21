@@ -39,3 +39,16 @@ it('厚みと反射は独立し、最大設定でも有限・有界', () => {
     expect(panel.polygon.every(p => Number.isFinite(p.x) && Number.isFinite(p.y) && Math.abs(p.y - 50) <= 6)).toBe(true);
   }
 });
+it('第4段階と全パネルを厳密一致させる（実経路・全プリセット・中心保護・光源）', async () => {
+  const { shadeGlassStrip: reference } = await import('../../tests/fixtures/glassShading.stage4');
+  const { EditorState } = await import('../state/editorState');
+  const { GLASS_MATERIAL_PRESETS } = await import('./glassMaterial');
+  for (const density of [0, 100]) for (const seed of [42, 123]) {
+    const state = new EditorState({ width: 800, height: 500 }); state.add({ x: 80, y: 50 }); state.update({ seed, params: { centerDensity: density } }); state.updateSurface({ widthPercent: 60 });
+    const frame = state.glass.prepare(state.impacts); if (!frame.geometry.ok) throw new Error(frame.geometry.message);
+    for (const preset of Object.values(GLASS_MATERIAL_PRESETS)) for (const angle of [0, 90, 225]) {
+      const light = createGlassLight(angle);
+      for (const path of frame.geometry.geometry.strips) expect(shadeGlassStrip(path, preset.settings, light, 3.125)).toEqual(reference(path, preset.settings, light, 3.125));
+    }
+  }
+});

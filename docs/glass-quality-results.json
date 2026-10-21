@@ -1,0 +1,45 @@
+{
+  "browser": "154.0.8037.57",
+  "exactRgbaCases": 6,
+  "shadingMedianMs": {
+    "stage4": 120.19999998807907,
+    "optimized": 12.099999994039536,
+    "rounds": 7,
+    "repetitions": 30,
+    "radialStrips": 26
+  },
+  "stress": [
+    {
+      "width": 2048,
+      "height": 1536,
+      "preparationMs": 9.900000005960464,
+      "compositeMs": 95.70000000298023,
+      "cracksMs": 50.400000005960464,
+      "fallback": false
+    },
+    {
+      "width": 8192,
+      "height": 2,
+      "preparationMs": 6.5,
+      "compositeMs": 7.700000002980232,
+      "cracksMs": 8.099999994039536,
+      "fallback": false
+    },
+    {
+      "width": 2,
+      "height": 8192,
+      "preparationMs": 6.600000008940697,
+      "compositeMs": 23.299999997019768,
+      "cracksMs": 12.599999994039536,
+      "fallback": false
+    },
+    {
+      "width": 4096,
+      "height": 4096,
+      "preparationMs": 9.5,
+      "compositeMs": 523.9000000059605,
+      "cracksMs": 325.8999999910593,
+      "fallback": false
+    }
+  ]
+}
