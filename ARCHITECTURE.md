@@ -169,3 +169,10 @@ type Impact = { id: string; origin: Point; seed: number; preset: StylePreset; pa
 `glassShading.ts` は経路ハッシュと各頂点の陰影・厚み位置を1回計算し、隣接パネルへ共有する。
 新たな永続キャッシュや画像バッファは持たず、第4段階のパネル値とRGBAを維持する。
 比較専用スナップショット・高解像度検証・測定条件は [品質と負荷](docs/GLASS_MATERIAL_QUALITY.md) を参照。
+
+## 通常描画の更新：黒線と独立反射
+
+`core/cleanCracks.ts` と `render/renderCleanCracks.ts` が中心線から滑らかな黒線輪郭と独立幅の反射を作る。
+製品の `EditorState.glass` はclean、互換用の独立管理器はlegacy。cleanは旧破断面を輪郭準備・描画から除外し、
+材質無効/全効果0/フォールバックでも旧面を復活させない。線幅・反射幅・強度では亀裂経路と平面分割を変更しない。
+プレビューとPNGは同じcleanフレームを共有する。詳細は [新しい割れ鏡描画](docs/CRISP_MIRROR.md) を参照。

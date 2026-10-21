@@ -113,7 +113,11 @@ export async function verifyGlassProduct(): Promise<string[]> {
       }
     }
     state.glass.reset(); const zero = state.glass.prepare(state.impacts, composition);
-    for (const mode of ['composite', 'cracks'] as const) check((await readPng(zero, mode)).toDataURL() === (await readPng(undefined, mode)).toDataURL(), `${mode}: all effects zero matches legacy PNG exactly`);
+    for (const mode of ['composite', 'cracks'] as const) {
+      const expected = document.createElement('canvas'); expected.width=320; expected.height=240;
+      renderGlassScene(expected.getContext('2d')!, image, state.impacts, size, mode, composition, zero);
+      check((await readPng(zero, mode)).toDataURL() === expected.toDataURL(), `${mode}: all effects zero matches clean black-core baseline`);
+    }
     return passed;
   } finally { preview.remove(); }
 }

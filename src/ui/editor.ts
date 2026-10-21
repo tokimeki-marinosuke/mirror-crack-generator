@@ -14,15 +14,12 @@ const sliders = [
   { key: 'concentricDensity', label: '蜘蛛の巣の密度', min: 0, max: 100, step: 1, unit: '%' },
   { key: 'centerRadius', label: '中心領域の半径（基準長比）', min: 0, max: 80, step: 1, unit: '%' },
   { key: 'centerDensity', label: '中心の亀裂密度（0で中心を残す）', min: 0, max: 100, step: 1, unit: '%' },
-  { key: 'lineWidth', label: '線幅（元画像基準）', min: 0.5, max: 6, step: 0.1, unit: 'px' },
-  { key: 'highlight', label: '従来の縁反射', min: 0, max: 100, step: 1, unit: '%' },
+  { key: 'lineWidth', label: '黒い亀裂の太さ（元画像基準）', min: 0.5, max: 6, step: 0.1, unit: 'px' },
   { key: 'opacity', label: '不透明度', min: 0, max: 100, step: 1, unit: '%' },
 ] as const;
 
 const surfaceSliders = [
-  { key: 'widthPercent', label: '破断面の幅（線幅とは独立）' },
-  { key: 'darkness', label: '暗部の強さ' },
-  { key: 'chipDensity', label: '欠けの密度' },
+  { key: 'darkness', label: '黒い亀裂の濃さ' },
 ] as const;
 
 const shardSliders = [
@@ -35,6 +32,7 @@ const shardSliders = [
 const materialSliders = [
   { key: 'thickness', label: 'ガラスの厚み', max: 100, unit: '%' },
   { key: 'lightDirection', label: '光源方向（0°右・90°下）', max: 360, unit: '°' },
+  { key: 'reflectionWidth', label: '反射幅（黒い亀裂の太さとは独立）', max: 100, unit: '%' },
   { key: 'edgeReflection', label: 'エッジ反射強度', max: 100, unit: '%' },
   { key: 'interiorReflection', label: '破片内部の反射強度', max: 100, unit: '%' },
   { key: 'microDetail', label: '微細ディテール量', max: 100, unit: '%' },
@@ -75,7 +73,7 @@ export function mountEditor(root: HTMLElement): void {
       <p class="hint">画像全体に適用します。シネマティックは見栄えと視認性のバランス型、リアルは控えめ、ドラマティックは強調型。選択後も自由に調整できます。</p>
       ${materialSliders.map(s=>`<label class="control" for="material-${s.key}">${s.label}<output id="material-${s.key}-value"></output></label><input id="material-${s.key}" type="range" min="0" max="${s.max}" step="1">`).join('')}
       <button type="button" id="material-reset">材質効果を0に戻す</button>
-      <p class="hint">厚みは線幅・隙間幅とは独立です。新しいエッジ反射を0にすると各点の「従来の縁反射」を使用します。内部反射は合成PNGだけに適用し、保護領域と重なる破片全体を維持します。</p>
+      <p class="hint">厚み・反射幅・黒い亀裂の太さは独立です。65%付近が従来の材質最大効果の目安です。内部反射は合成PNGだけに適用し、保護領域と重なる破片全体を維持します。</p>
       </fieldset><p id="material-status" role="status"></p><hr><h2>画像全体の映り</h2>
       <fieldset id="shard-settings" disabled><legend class="sr-only">鏡の破片の画像変形</legend>
       <p class="hint">全ての衝撃点で区切られた破片に適用します。亀裂の縁の反射・破断面幅とは別の設定です。</p>
@@ -89,9 +87,9 @@ export function mountEditor(root: HTMLElement): void {
       <p class="hint">切り替えると調整値を初期化します。位置・シードは保持します。</p>
       <label class="control" for="impact-strength">衝撃の強さ<output id="impact-strength-value"></output></label>
       <input id="impact-strength" type="range" min="0" max="100" step="1" value="50">
-      <p class="hint">長さ・分岐・欠けをまとめて調整。個別に変更した項目を優先します。プリセットの選び直しで個別調整を解除します。中心保護・線幅・破断面幅は保持します。</p>
+      <p class="hint">長さ・分岐をまとめて調整。個別に変更した項目を優先します。プリセットの選び直しで個別調整を解除します。中心保護・黒い亀裂の太さは保持します。</p>
       ${surfaceSliders.map(s => `<label class="control" for="surface-${s.key}">${s.label}<output id="surface-${s.key}-value"></output></label><input id="surface-${s.key}" type="range" min="0" max="100" step="1">`).join('')}
-      <p class="hint">隙間や欠けを見るには破断面の幅を上げてください。反射は亀裂の縁の光です。破片内の画像のずれ・回転は「画像全体の映り」で調整できます。</p>
+      <p class="hint">黒い亀裂を太くしても経路や欠けの数は変わりません。反射幅は画像全体の「ガラス材質」で調整します。破片内の画像のずれ・回転は「画像全体の映り」で調整できます。</p>
       ${sliders.map(s => `<label class="control" for="${s.key}">${s.label}<output id="${s.key}-value"></output></label>
       <input type="range" id="${s.key}" min="${s.min}" max="${s.max}" step="${s.step}">`).join('')}
       <label class="control" for="seed">シード（整数）</label>
@@ -126,12 +124,12 @@ export function mountEditor(root: HTMLElement): void {
   function redraw(): void {
     try {
       const composition=state?.shards.resolve(state.impacts);
-      const material=state && state.impacts.length && isGlassMaterialActive(state.glass.settings) ? state.glass.prepare(state.impacts, composition) : undefined;
+      const material=state && state.impacts.length ? state.glass.prepare(state.impacts, composition) : undefined;
       renderPreview(canvas, image, state?.impacts ?? [], state?.selectedId ?? null, composition, material);
       const glassMessage=get('#material-status');
       if(!state?.impacts.length){glassMessage.textContent=image?'衝撃点を追加すると材質効果を確認できます。':'';glassMessage.dataset.status='waiting';}
-      else if(!material){glassMessage.textContent='材質効果は無効です（従来描画）。';glassMessage.dataset.status='off';}
-      else if(!material.geometry.ok){glassMessage.textContent='材質を安全に準備できないため、従来描画で表示・保存します。';glassMessage.dataset.status='fallback';}
+      else if(!material || !isGlassMaterialActive(material.settings)){glassMessage.textContent='材質効果は無効です。黒い亀裂のみ表示します。';glassMessage.dataset.status='off';}
+      else if(!material.geometry.ok){glassMessage.textContent='材質を安全に準備できないため、黒い亀裂の簡易描画で表示・保存します。';glassMessage.dataset.status='fallback';}
       else if(material.interior && !material.interior.ok){glassMessage.textContent='内部反射を省略しています。亀裂の材質効果は維持します。';glassMessage.dataset.status='partial';}
       else {const p=material.interior?.ok?material.interior.plan:undefined;glassMessage.textContent=p?`内部反射 ${p.surfaces.length}破片 / 保護 ${p.protectedCount} / 小片据え置き ${p.budgetCount}`:'断面・エッジ反射・微細ディテールを適用中。';glassMessage.dataset.status='active';}
       const message=get('#shard-status');
@@ -249,7 +247,7 @@ export function mountEditor(root: HTMLElement): void {
     feedback.textContent = 'PNGを作成しています…';
     try {
       const composition=state.shards.resolve(impacts);
-      const material=isGlassMaterialActive(state.glass.settings)&&impacts.length?state.glass.prepare(impacts,composition):undefined;
+      const material=impacts.length?state.glass.prepare(impacts,composition):undefined;
       const blob = await exportPng(source, impacts, mode, composition, material);
       downloadPng(blob, filename);
       feedback.textContent = `${filename} の保存を開始しました（${source.naturalWidth} × ${source.naturalHeight}px）。`;

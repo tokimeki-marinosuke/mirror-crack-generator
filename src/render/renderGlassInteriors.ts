@@ -1,13 +1,14 @@
 import type { GlassLight } from '../core/glassMaterial';
+import { materialGain } from '../core/cleanCracks';
 import { shadeGlassInterior, type GlassInteriorPlan } from '../core/glassTexture';
 /** Composite only. source-atop preserves the image's alpha, including fully transparent pixels. */
-export function renderGlassInteriors(ctx: CanvasRenderingContext2D, plan: GlassInteriorPlan, light: GlassLight, intensity: number): void {
+export function renderGlassInteriors(ctx: CanvasRenderingContext2D, plan: GlassInteriorPlan, light: GlassLight, intensity: number, clean = false): void {
   if (intensity === 0) return;
   ctx.save();
   try {
     ctx.globalCompositeOperation = 'source-atop'; ctx.globalAlpha = 1; ctx.filter = 'none';
     for (const surface of plan.surfaces) {
-      const shade = shadeGlassInterior(surface, light, intensity);
+      const shade = shadeGlassInterior(surface, light, clean ? Math.min(100, intensity / .65) : intensity);
       ctx.save();
       try {
         ctx.beginPath();
@@ -16,7 +17,8 @@ export function renderGlassInteriors(ctx: CanvasRenderingContext2D, plan: GlassI
         }
         ctx.clip('evenodd');
         const gradient = ctx.createLinearGradient(shade.start.x, shade.start.y, shade.end.x, shade.end.y);
-        gradient.addColorStop(0, `rgba(0,0,0,${shade.alpha})`); gradient.addColorStop(.5, 'rgba(255,255,255,0)'); gradient.addColorStop(1, `rgba(255,255,255,${shade.alpha})`);
+        const spread = clean ? Math.max(0, materialGain(intensity) - 1) * .18 : 0;
+        gradient.addColorStop(spread, `rgba(0,0,0,${shade.alpha})`); gradient.addColorStop(.5, 'rgba(255,255,255,0)'); gradient.addColorStop(1 - spread, `rgba(255,255,255,${shade.alpha})`);
         ctx.fillStyle = gradient;
         // Fill the clipped region, including concave outlines and holes, without allocating a bitmap.
         ctx.fill('evenodd');

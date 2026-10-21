@@ -3,7 +3,7 @@ import type { Size } from '../core/geometry';
 import { segmentWidth, type CrackStyle } from './crackStyle';
 
 /** 元画像座標で描画。中心の線幅・ハイライトも円内に制限し、外側の描画を維持する。 */
-export function renderCracks(ctx: CanvasRenderingContext2D, pattern: CrackPattern, size: Size, style: CrackStyle): void {
+export function renderCracks(ctx: CanvasRenderingContext2D, pattern: CrackPattern, size: Size, style: CrackStyle & { darkOnly?: boolean }): void {
   if (style.opacity === 0) return;
   ctx.save();
   try {
@@ -23,7 +23,7 @@ export function renderCracks(ctx: CanvasRenderingContext2D, pattern: CrackPatter
           ctx.arc(pattern.origin.x, pattern.origin.y, radius, 0, Math.PI * 2);
           ctx.clip('evenodd');
         }
-        for (const pass of ['edge', 'core', 'highlight'] as const) {
+        for (const pass of (style.darkOnly ? ['edge'] as const : ['edge', 'core', 'highlight'] as const)) {
           if (pass === 'highlight' && style.highlight === 0) continue;
           ctx.strokeStyle = pass === 'edge' ? '#17232f' : pass === 'core' ? '#c2d6de' : '#ffffff';
           for (const segment of segments) {

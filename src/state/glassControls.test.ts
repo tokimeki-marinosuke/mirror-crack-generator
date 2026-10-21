@@ -26,9 +26,9 @@ it('旧プリセットと衝撃マクロは材質を変更せず、点選択で�
   state.select(1); state.applyPreset('anime'); state.updateStrength(90); state.select(2); state.applyPreset('web');
   expect(state.glass.settings).toBe(material); expect(state.glass.preset).toBe('dramatic');
 });
-it('リセット・無効化で旧描画に戻り、再有効化は保存された値を使う', () => {
+it('リセット・無効化で黒線のみの表示に戻り、再有効化は保存された値を使う', () => {
   const state = new EditorState(size); state.glass.applyPreset('real');
-  state.glass.update({ enabled: false }); expect(isGlassMaterialActive(state.glass.settings)).toBe(false); expect(state.glass.settings.thickness).toBe(12);
+  state.glass.update({ enabled: false }); expect(isGlassMaterialActive(state.glass.settings)).toBe(false); expect(state.glass.settings.thickness).toBe(28);
   state.glass.update({ enabled: true }); expect(isGlassMaterialActive(state.glass.settings)).toBe(true);
   state.glass.reset(); expect(isGlassMaterialActive(state.glass.settings)).toBe(false);
   for (const key of ['thickness','edgeReflection','interiorReflection','microDetail'] as const) expect(state.glass.settings[key]).toBe(0);

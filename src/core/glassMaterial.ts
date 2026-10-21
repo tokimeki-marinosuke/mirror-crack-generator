@@ -4,6 +4,8 @@ export type GlassMaterialSettings = Readonly<{
   enabled: boolean;
   thickness: number;
   edgeReflection: number;
+  /** Omitted by legacy callers; 65 is the old reflection-width baseline. */
+  reflectionWidth?: number;
   interiorReflection: number;
   microDetail: number;
   /** 画像座標で0=右、90=下。左上は225度。強度ではない。 */
@@ -11,12 +13,12 @@ export type GlassMaterialSettings = Readonly<{
 }>;
 /** 低レベルの初期値は無効・全0。製品のシネマティック初期化はEditorStateが行う。 */
 export const DEFAULT_GLASS_MATERIAL: GlassMaterialSettings = Object.freeze({
-  enabled: false, thickness: 0, edgeReflection: 0, interiorReflection: 0, microDetail: 0, lightDirection: 225,
+  enabled: false, thickness: 0, edgeReflection: 0, interiorReflection: 0, microDetail: 0, reflectionWidth: 65, lightDirection: 225,
 });
 export type GlassLight = Readonly<{ angle: number; screenDirection: Readonly<Point>; direction: Vector3 }>;
 export function resolveGlassMaterial(patch: Partial<GlassMaterialSettings> = {}): GlassMaterialSettings {
   const result = { ...DEFAULT_GLASS_MATERIAL, ...patch };
-  if (typeof result.enabled !== 'boolean' || ![result.thickness, result.edgeReflection, result.interiorReflection, result.microDetail].every(v => Number.isFinite(v) && v >= 0 && v <= 100) || !Number.isFinite(result.lightDirection)) throw new Error('材質設定が不正です。');
+  if (typeof result.enabled !== 'boolean' || ![result.thickness, result.edgeReflection, result.interiorReflection, result.microDetail, result.reflectionWidth!].every(v => Number.isFinite(v) && v >= 0 && v <= 100) || !Number.isFinite(result.lightDirection)) throw new Error('材質設定が不正です。');
   result.lightDirection = ((result.lightDirection % 360) + 360) % 360;
   return Object.freeze(result);
 }
@@ -33,8 +35,8 @@ export function createGlassLight(angle: number): GlassLight {
 
 /** Material presets change shading only; geometry, gaps, line width and image transforms stay independent. */
 export const GLASS_MATERIAL_PRESETS = Object.freeze({
-  cinematic: Object.freeze({ label: 'シネマティック', settings: resolveGlassMaterial({ enabled: true, thickness: 32, edgeReflection: 60, interiorReflection: 25, microDetail: 15, lightDirection: 225 }) }),
-  real: Object.freeze({ label: 'リアル', settings: resolveGlassMaterial({ enabled: true, thickness: 12, edgeReflection: 30, interiorReflection: 12, microDetail: 5, lightDirection: 225 }) }),
-  dramatic: Object.freeze({ label: 'ドラマティック', settings: resolveGlassMaterial({ enabled: true, thickness: 65, edgeReflection: 90, interiorReflection: 45, microDetail: 55, lightDirection: 225 }) }),
+  cinematic: Object.freeze({ label: 'シネマティック', settings: resolveGlassMaterial({ enabled: true, thickness: 65, edgeReflection: 68, reflectionWidth: 65, interiorReflection: 60, microDetail: 22, lightDirection: 225 }) }),
+  real: Object.freeze({ label: 'リアル', settings: resolveGlassMaterial({ enabled: true, thickness: 28, edgeReflection: 40, reflectionWidth: 35, interiorReflection: 25, microDetail: 8, lightDirection: 225 }) }),
+  dramatic: Object.freeze({ label: 'ドラマティック', settings: resolveGlassMaterial({ enabled: true, thickness: 90, edgeReflection: 92, reflectionWidth: 85, interiorReflection: 75, microDetail: 48, lightDirection: 225 }) }),
 });
 export type GlassMaterialPreset = keyof typeof GLASS_MATERIAL_PRESETS;

@@ -43,7 +43,7 @@ export class EditorState {
   private nextId = 1;
   readonly shards: ShardImageState;
   readonly glass: GlassMaterialState;
-  constructor(readonly size: Size) { this.shards = new ShardImageState(size); this.glass = new GlassMaterialState(size); this.glass.applyPreset('cinematic'); }
+  constructor(readonly size: Size) { this.shards = new ShardImageState(size); this.glass = new GlassMaterialState(size, 'clean'); this.glass.applyPreset('cinematic'); }
   get impacts(): readonly Impact[] { return this.items; }
   get selectedId(): number | null { return this.selected; }
   get active(): Impact | undefined { return this.items.find(impact => impact.id === this.selected); }

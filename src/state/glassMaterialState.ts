@@ -5,7 +5,7 @@ import type { Impact } from './editorState';
 import { ShardImageState, type ShardComposition } from './shardImageState';
 import { prepareGlassDetails, prepareGlassInteriors, type GlassDetail, type GlassInteriorResult } from '../core/glassTexture';
 import type { ShardGraph } from '../core/shardRegions';
-export type GlassMaterialFrame = Readonly<{ settings: GlassMaterialSettings; light: GlassLight; geometry: GlassGeometryResult; details?: readonly GlassDetail[]; interior?: GlassInteriorResult }>;
+export type GlassMaterialFrame = Readonly<{ appearance?: 'legacy' | 'clean'; settings: GlassMaterialSettings; light: GlassLight; geometry: GlassGeometryResult; details?: readonly GlassDetail[]; interior?: GlassInteriorResult }>;
 /** 画像全体の材質設定。光源・描画強度と幾何キャッシュを分離する。 */
 export class GlassMaterialState {
   private selectedPreset: GlassMaterialPreset | undefined;
@@ -20,7 +20,7 @@ export class GlassMaterialState {
   private interiorGraph?: ShardGraph;
   private interiorResult?: GlassInteriorResult;
   private interiorSeed?: number;
-  constructor(private readonly size: Size) { this.interiorSource = new ShardImageState(size); }
+  constructor(private readonly size: Size, readonly appearance: 'legacy' | 'clean' = 'legacy') { this.interiorSource = new ShardImageState(size); }
   get preset(): GlassMaterialPreset | undefined { return this.selectedPreset; }
   applyPreset(id: GlassMaterialPreset): void {
     if (!Object.hasOwn(GLASS_MATERIAL_PRESETS, id)) throw new Error('材質プリセットが不正です。');
@@ -39,8 +39,8 @@ export class GlassMaterialState {
     const visible = impacts.filter(i => i.params.opacity > 0);
     const graph = composition?.extraction.ok ? composition.extraction.graph : undefined;
     const oldGraph = this.graph?.extraction.ok ? this.graph.extraction.graph : undefined;
-    if (!this.result || graph !== oldGraph || visible.length !== this.inputs.length || visible.some((i, n) => i.id !== this.inputs[n].id || i.pattern !== this.inputs[n].pattern || i.fracture !== this.inputs[n].fracture)) {
-      this.result = prepareGlassGeometry(visible, this.size, graph);
+    if (!this.result || graph !== oldGraph || visible.length !== this.inputs.length || visible.some((i, n) => i.id !== this.inputs[n].id || i.pattern !== this.inputs[n].pattern || this.appearance === 'legacy' && i.fracture !== this.inputs[n].fracture)) {
+      this.result = prepareGlassGeometry(this.appearance === 'clean' ? visible.map(({ id, pattern }) => ({ id, pattern })) : visible, this.size, graph);
       this.details = this.result.ok ? prepareGlassDetails(this.result.geometry, new Map(visible.map(i => [i.id, i.seed]))) : [];
       this.inputs = visible.slice(); this.graph = composition; this.builds++;
     }
@@ -60,6 +60,6 @@ export class GlassMaterialState {
         interior = this.interiorResult;
       } else interior = { ok: false, message: '破片を抽出できないため内部反射を省略しました。' };
     }
-    return { settings: this.values, light: this.sharedLight, geometry: this.result, details: this.details, interior };
+    return { appearance: this.appearance, settings: this.values, light: this.sharedLight, geometry: this.result, details: this.details, interior };
   }
 }

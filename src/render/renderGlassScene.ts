@@ -4,6 +4,7 @@ import type { Impact } from '../state/editorState';
 import type { GlassMaterialFrame } from '../state/glassMaterialState';
 import type { ShardComposition } from '../state/shardImageState';
 import { renderCompositeImage } from './renderShardImage';
+import { renderCleanCracks } from './renderCleanCracks';
 import { renderGlassInteriors } from './renderGlassInteriors';
 import { renderGlassEdges } from './renderGlassEdges';
 import { renderCracks } from './renderCracks';
@@ -15,6 +16,12 @@ export function renderGlassScene(ctx: CanvasRenderingContext2D, image: CanvasIma
   mode: 'composite' | 'cracks', composition?: ShardComposition, material?: GlassMaterialFrame): { effectsApplied: boolean; requested: boolean } {
   if (mode === 'composite') renderCompositeImage(ctx, image, size, composition);
   const requested = material ? isGlassMaterialActive(material.settings) : false;
+  if (material?.appearance === 'clean') {
+    const interior = mode === 'composite' && requested && material.geometry.ok && material.interior?.ok ? material.interior.plan : undefined;
+    if (interior) renderGlassInteriors(ctx, interior, material.light, material.settings.interiorReflection, true);
+    renderCleanCracks(ctx, impacts, size, material);
+    return { effectsApplied: requested && material.geometry.ok, requested };
+  }
   if (!material || !material.settings.enabled || !material.geometry.ok ||
     !requested) {
     renderImpacts(ctx, impacts, size); return { effectsApplied: false, requested };

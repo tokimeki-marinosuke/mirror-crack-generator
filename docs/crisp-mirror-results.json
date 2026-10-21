@@ -1,0 +1,20 @@
+{
+  "cases": 12,
+  "checks": 102,
+  "presence": {
+    "oldDefault": {
+      "dark": 36,
+      "coveredFraction": 0.017915
+    },
+    "newCinematic": {
+      "dark": 9970,
+      "coveredFraction": 0.0306425
+    }
+  },
+  "renderBatchMedianMs": {
+    "oldMax": 93,
+    "newCinematic": 93.79999999701977,
+    "frames": 5
+  },
+  "notes": "Single Chromium run; includes drawing/readback, excludes partition and PNG compression."
+}

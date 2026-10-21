@@ -20,7 +20,7 @@ export function renderPreview(canvas: HTMLCanvasElement, image: HTMLImageElement
   if (!image) return null;
   const size = { width: image.naturalWidth, height: image.naturalHeight };
   const rect = containRect(size, { left: 0, top: 0, width: bounds.width, height: bounds.height });
-  const activeMaterial = material && isGlassMaterialActive(material.settings) && material.geometry.ok;
+  const activeMaterial = material && (material.appearance === 'clean' || isGlassMaterialActive(material.settings) && material.geometry.ok);
   if (!activeMaterial && !composition?.plan) ctx.drawImage(image, rect.left, rect.top, rect.width, rect.height);
   ctx.save();
   ctx.translate(rect.left, rect.top);
