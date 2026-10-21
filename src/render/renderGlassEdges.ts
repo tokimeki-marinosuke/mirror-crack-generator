@@ -1,10 +1,11 @@
 import type { GlassGeometry } from '../core/glassGeometry';
 import type { GlassLight, GlassMaterialSettings } from '../core/glassMaterial';
-import { shadeGlassStrip } from '../core/glassShading';
+import type { GlassDetail } from '../core/glassTexture';
+import { glassResponse, shadeGlassStrip } from '../core/glassShading';
 import type { Impact } from '../state/editorState';
 /** No image erasure, offscreen buffers, or geometry mutation. */
 export function renderGlassEdges(ctx: CanvasRenderingContext2D, impact: Impact, geometry: GlassGeometry,
-  settings: GlassMaterialSettings, light: GlassLight): void {
+  settings: GlassMaterialSettings, light: GlassLight, details: readonly GlassDetail[] = []): void {
   const { width, height } = geometry.size;
   const radius = geometry.protections.find(p => p.impactId === impact.id)?.center?.radius ?? 0;
   ctx.save();
@@ -32,6 +33,14 @@ export function renderGlassEdges(ctx: CanvasRenderingContext2D, impact: Impact, 
             ctx.beginPath(); ctx.moveTo(panel.highlight[0].x, panel.highlight[0].y); ctx.lineTo(panel.highlight[1].x, panel.highlight[1].y);
             ctx.strokeStyle = '#f3fbff'; ctx.globalAlpha = alpha * panel.reflection; ctx.lineWidth = panel.lineWidth; ctx.stroke();
           }
+        }
+        if (settings.microDetail > 0) for (const detail of details) {
+          if (detail.impactId !== impact.id || detail.region !== region) continue;
+          const alpha = impact.params.opacity / 100 * detail.strength * settings.microDetail / 100;
+          ctx.beginPath(); detail.polygon.forEach((p, i) => i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y)); ctx.closePath();
+          ctx.fillStyle = '#101a25'; ctx.globalAlpha = alpha * .35; ctx.fill();
+          ctx.beginPath(); ctx.moveTo(detail.polygon[1].x, detail.polygon[1].y); ctx.lineTo(detail.polygon[2].x, detail.polygon[2].y);
+          ctx.strokeStyle = '#f3fbff'; ctx.globalAlpha = alpha * .55 * glassResponse(detail.normal, light); ctx.lineWidth = .45; ctx.stroke();
         }
       } finally { ctx.restore(); }
     }

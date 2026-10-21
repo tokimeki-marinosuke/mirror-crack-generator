@@ -11,7 +11,8 @@ const {chromium}=require('playwright');const assert=require('node:assert/strict'
  await set('light','90');assert.equal((await data()).differences,'0');
  await set('thickness','100');assert.ok(Number((await data()).differences)>0);assert.equal((await data()).builds,original.builds);
  await set('reflection','70');const lit=await pixels();await set('light','270');assert.notEqual((await pixels())[1],lit[1]);assert.equal((await data()).builds,original.builds);
- await page.screenshot({path:path.resolve('docs/glass-material-stage2.png'),fullPage:true});
+ await set('interior','60');await set('detail','60');assert.equal((await data()).builds,original.builds);assert.ok(Number((await data()).interiors)>0);assert.ok(Number((await data()).details)>0);
+ await page.screenshot({path:path.resolve('docs/glass-material-stage3.png'),fullPage:true});
  await page.locator('#enabled').uncheck();await wait();
  let cases=0;
  for(const sample of (process.env.GLASS_QUICK ? [] : ['light','dark','transparent']))for(const count of ['1','2'])for(const density of ['0','100'])for(const width of ['0','60']){
@@ -37,10 +38,11 @@ const {chromium}=require('playwright');const assert=require('node:assert/strict'
   for(let y=0;y<240;y++)for(let x=0;x<320;x++)if(Math.hypot(x+.5-160,y+.5-120)<radius-1&&pixels[(y*320+x)*4+3])protectedPixels++;
   const disabled=draw({...frame,settings:{...frame.settings,enabled:false}});
   const zero=draw({...frame,settings:{...frame.settings,thickness:0,edgeReflection:0}});
-  const reserved=draw({...frame,settings:{...frame.settings,thickness:0,edgeReflection:0,interiorReflection:50,microDetail:50}});
+  const unavailableInterior=draw({...frame,settings:{...frame.settings,thickness:0,edgeReflection:0,interiorReflection:50,microDetail:0}});
   const failed=draw({...frame,geometry:{ok:false,reason:'limit-exceeded',message:'test'}});
-  return {protectedPixels,restored:active.restored,repeat:active.c.toDataURL()===again.c.toDataURL(),fallback:[disabled,zero,reserved,failed].every(v=>v.c.toDataURL()===off.c.toDataURL()&&!v.status.effectsApplied),active:active.status.effectsApplied};
+  return {protectedPixels,restored:active.restored,repeat:active.c.toDataURL()===again.c.toDataURL(),fallback:[disabled,zero,unavailableInterior,failed].every(v=>v.c.toDataURL()===off.c.toDataURL()&&!v.status.effectsApplied),active:active.status.effectsApplied};
  });
  assert.deepEqual(invariants,{protectedPixels:0,restored:true,repeat:true,fallback:true,active:true});
- assert.deepEqual(errors,[]);console.log(`Glass edges: ${cases} image/count/protection/width cases + motion off/seed, direct RGBA and both PNG comparisons passed; light/thickness reuse geometry; directional effects, disabled legacy equivalence and protected center passed.`);
+ const textureChecks=await page.evaluate(async()=>{const {verifyGlassTexture}=await import('/mirror-crack-generator/tests/glass-texture.browser.ts');return verifyGlassTexture();});console.log(`Native glass texture: ${textureChecks.length} checks passed.`);
+ assert.deepEqual(errors,[]);console.log(`Glass material stage 3: ${cases} image/count/protection/width cases + motion off/seed, direct RGBA and both PNG comparisons passed; light/thickness reuse geometry; directional effects, disabled legacy equivalence and protected center passed.`);
 }finally{await browser.close()}})().catch(e=>{console.error(e);process.exitCode=1});

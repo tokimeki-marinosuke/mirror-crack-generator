@@ -45,3 +45,10 @@ it('入力予算超過で部分分割を使わず、正常な形状へ戻せば�
  state.update({displacement:50});const failed=state.resolve([two])!;expect(failed.extraction).toMatchObject({ok:false,reason:'limit-exceeded'});expect(failed.plan).toBeUndefined();
  expect(state.resolve([i])!.plan).toBeDefined();expect(state.extractions).toBe(2);
 });
+it('材質用に設定0のまま幾何を要求でき、通常呼び出しの旧挙動と抽出キャッシュを維持',()=>{
+ const state=new ShardImageState(size),i=impact();
+ const required=state.resolve([i],true)!;expect(required.extraction.ok).toBe(true);expect(required.plan).toBeDefined();
+ expect(required.plan!.motions.every(m=>m.dx===0&&m.dy===0&&m.angle===0&&(m.brightness??0)===0)).toBe(true);
+ expect(state.resolve([i])).toBeUndefined();expect(state.resolve([i],true)).toBe(required);
+ state.update({reflection:30});expect(state.resolve([i])!.extraction).toBe(required.extraction);expect(state.extractions).toBe(1);
+});

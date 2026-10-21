@@ -144,3 +144,13 @@ type Impact = { id: string; origin: Point; seed: number; preset: StylePreset; pa
 `state/glassMaterialState.ts` は光源と幾何キャッシュを分離する開発用管理器。
 `render/renderGlassScene.ts` は現段階では従来描画へ委譲し、本番UI・出力経路へは未接続。
 詳細と比較ページは [材質描画基盤](docs/GLASS_MATERIAL_FOUNDATION.md) を参照。
+
+## ガラス材質の局所反射・内部質感（第2・3段階）
+
+`core/glassShading.ts` と `render/renderGlassEdges.ts` が既存の両側輪郭から非対称の半透明断面と方向性反射を描く。
+`core/glassTexture.ts` が最大256破片の内部材質と最大256個の微細欠けをシード付きで準備する。
+内部材質は保護円と重なる破片全体を除外し、合成モードだけで背景のアルファを維持して描く。
+`GlassMaterialState` は輪郭・内部材質を別々にキャッシュし、強度と光源の操作で分割し直さない。
+画像変形が全て0でも、材質用の明示要求で既存の抽出を再利用できる。通常の製品経路の設定0の挙動は維持する。
+開発比較ページのみへの接続で、本番UI・既存のPNG入口は未変更。
+詳細は [断面と方向性反射](docs/GLASS_MATERIAL_EDGES.md) と [内部反射・微細ディテール](docs/GLASS_MATERIAL_TEXTURE.md) を参照。

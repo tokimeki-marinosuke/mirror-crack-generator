@@ -147,3 +147,7 @@ Vite の `base` は `/mirror-crack-generator/` に設定しています。
 第4段階の製品UI・明暗差・隙間・合成PNGへの接続は [破片画像の製品接続](SHARD_COMPOSITE.md) を参照。
 
 ガラス材質描画の第1段階と旧描画との比較は [材質描画基盤](GLASS_MATERIAL_FOUNDATION.md) を参照。
+
+材質の第2段階の断面・方向性反射は [局所反射](GLASS_MATERIAL_EDGES.md)、
+第3段階の破片内部グラデーション・微細欠けと実Canvas検証は [内部質感](GLASS_MATERIAL_TEXTURE.md) を参照。
+比較は `/mirror-crack-generator/tests/glass-material.html` で行い、本番UIにはまだ接続しない。

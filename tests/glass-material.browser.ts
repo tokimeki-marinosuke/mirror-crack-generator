@@ -28,7 +28,7 @@ function diagnostic(frame: GlassMaterialFrame): void {
 async function draw(): Promise<void> {
   const current = ++revision; get('summary').dataset.status = 'running';
   const capturedState = state, capturedImage = image, capturedComposition = composition;
-  material.update({ enabled: get<HTMLInputElement>('enabled').checked, lightDirection: get<HTMLInputElement>('light').valueAsNumber, edgeReflection: get<HTMLInputElement>('reflection').valueAsNumber, thickness: get<HTMLInputElement>('thickness').valueAsNumber });
+  material.update({ enabled: get<HTMLInputElement>('enabled').checked, interiorReflection: get<HTMLInputElement>('interior').valueAsNumber, microDetail: get<HTMLInputElement>('detail').valueAsNumber, lightDirection: get<HTMLInputElement>('light').valueAsNumber, edgeReflection: get<HTMLInputElement>('reflection').valueAsNumber, thickness: get<HTMLInputElement>('thickness').valueAsNumber });
   const frame = material.prepare(capturedState.impacts, capturedComposition), size = capturedState.size;
   get<HTMLOutputElement>('light-value').value = `${frame.light.angle}°`; get<HTMLOutputElement>('thickness-value').value = `${frame.settings.thickness}%`;
   const legacy = get<HTMLCanvasElement>('baseline'), next = get<HTMLCanvasElement>('material');
@@ -53,8 +53,10 @@ async function draw(): Promise<void> {
   }
   if (current !== revision) return;
   diagnostic(frame);
+  const interior = frame.interior?.ok ? frame.interior.plan : undefined;
+  get('texture-status').textContent = `内部反射: ${interior?.surfaces.length ?? 0}破片 / 保護 ${interior?.protectedCount ?? 0} / 上限据え置き ${interior?.budgetCount ?? 0} / 微細欠け候補 ${frame.details?.length ?? 0}。内部反射は合成のみ・元画像の透過を保持。${frame.interior && !frame.interior.ok ? frame.interior.message : ''}`;
   const summary = get('summary');
-  Object.assign(summary.dataset, { status: (status.effectsApplied || differences === 0) && pngsEqual ? 'passed' : 'failed', differences: String(differences), pngsEqual: String(pngsEqual), builds: String(material.preparations), requested: String(status.requested), effectsApplied: String(status.effectsApplied) });
+  Object.assign(summary.dataset, { status: (status.effectsApplied || differences === 0) && pngsEqual ? 'passed' : 'failed', differences: String(differences), pngsEqual: String(pngsEqual), builds: String(material.preparations), requested: String(status.requested), effectsApplied: String(status.effectsApplied), interiors: String(interior?.surfaces.length ?? 0), details: String(frame.details?.length ?? 0) });
   summary.textContent = `表示差分 ${differences} / PNG比較 ${pngsEqual ? '一致' : '不一致'} / 材質用幾何の準備 ${material.preparations}回 / 材質効果 ${status.effectsApplied ? '適用' : '無効（旧描画）'}`;
   if (frame.geometry.ok) {
     const g = frame.geometry.geometry;
@@ -76,5 +78,5 @@ function rebuild(): void {
   composition = state.shards.resolve(state.impacts); void draw();
 }
 for (const id of ['sample', 'count', 'seed', 'density', 'width', 'motion']) get(id).addEventListener('change', rebuild);
-for (const id of ['enabled', 'light', 'thickness', 'reflection']) get(id).addEventListener('input', () => { void draw(); });
+for (const id of ['enabled', 'light', 'thickness', 'reflection', 'interior', 'detail']) get(id).addEventListener('input', () => { void draw(); });
 rebuild();

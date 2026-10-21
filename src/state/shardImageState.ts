@@ -21,8 +21,9 @@ export class ShardImageState {
     if((Object.keys(next) as (keyof ShardImageSettings)[]).every(k=>next[k]===this.values[k]))return;
     this.values=Object.freeze(next);this.composition=undefined;
   }
-  resolve(impacts: readonly Impact[]): ShardComposition | undefined {
-    if(Object.values(this.values).every(v=>v===0))return undefined;
+  /** requireGeometryは材質用。既定の呼び出しでは全設定0なら従来どおり抽出しない。 */
+  resolve(impacts: readonly Impact[], requireGeometry = false): ShardComposition | undefined {
+    if(!requireGeometry&&Object.values(this.values).every(v=>v===0))return undefined;
     const visible=impacts.filter(i=>i.params.opacity>0);
     const changed=visible.length!==this.sources.length||visible.some((v,i)=>v.pattern!==this.sources[i].pattern||v.id!==this.sources[i].id);
     if(changed||!this.extraction){

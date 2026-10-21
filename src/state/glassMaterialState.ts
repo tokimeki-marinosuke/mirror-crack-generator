@@ -2,9 +2,11 @@ import { createGlassLight, DEFAULT_GLASS_MATERIAL, resolveGlassMaterial, type Gl
 import { prepareGlassGeometry, type GlassGeometryResult } from '../core/glassGeometry';
 import type { Size } from '../core/geometry';
 import type { Impact } from './editorState';
-import type { ShardComposition } from './shardImageState';
-export type GlassMaterialFrame = Readonly<{ settings: GlassMaterialSettings; light: GlassLight; geometry: GlassGeometryResult }>;
-/** 第1段階は開発用。既存EditorStateには組み込まず、光源と幾何キャッシュを分離する。 */
+import { ShardImageState, type ShardComposition } from './shardImageState';
+import { prepareGlassDetails, prepareGlassInteriors, type GlassDetail, type GlassInteriorResult } from '../core/glassTexture';
+import type { ShardGraph } from '../core/shardRegions';
+export type GlassMaterialFrame = Readonly<{ settings: GlassMaterialSettings; light: GlassLight; geometry: GlassGeometryResult; details?: readonly GlassDetail[]; interior?: GlassInteriorResult }>;
+/** 開発用の材質管理。既存EditorStateには組み込まず、光源と幾何キャッシュを分離する。 */
 export class GlassMaterialState {
   private values = DEFAULT_GLASS_MATERIAL;
   private sharedLight = createGlassLight(this.values.lightDirection);
@@ -12,7 +14,12 @@ export class GlassMaterialState {
   private graph: ShardComposition | undefined;
   private result?: GlassGeometryResult;
   private builds = 0;
-  constructor(private readonly size: Size) {}
+  private details: GlassDetail[] = [];
+  private readonly interiorSource: ShardImageState;
+  private interiorGraph?: ShardGraph;
+  private interiorResult?: GlassInteriorResult;
+  private interiorSeed?: number;
+  constructor(private readonly size: Size) { this.interiorSource = new ShardImageState(size); }
   get settings(): GlassMaterialSettings { return this.values; }
   get light(): GlassLight { return this.sharedLight; }
   get preparations(): number { return this.builds; }
@@ -27,8 +34,25 @@ export class GlassMaterialState {
     const oldGraph = this.graph?.extraction.ok ? this.graph.extraction.graph : undefined;
     if (!this.result || graph !== oldGraph || visible.length !== this.inputs.length || visible.some((i, n) => i.id !== this.inputs[n].id || i.pattern !== this.inputs[n].pattern || i.fracture !== this.inputs[n].fracture)) {
       this.result = prepareGlassGeometry(visible, this.size, graph);
+      this.details = this.result.ok ? prepareGlassDetails(this.result.geometry, new Map(visible.map(i => [i.id, i.seed]))) : [];
       this.inputs = visible.slice(); this.graph = composition; this.builds++;
     }
-    return { settings: this.values, light: this.sharedLight, geometry: this.result };
+    let interior: GlassInteriorResult | undefined;
+    if (this.result.ok && this.values.enabled && this.values.interiorReflection > 0) {
+      const source = composition ?? this.interiorSource.resolve(visible, true);
+      if (source?.extraction.ok) {
+        const graph = source.extraction.graph;
+        let seed = 2166136261; for (const impact of visible) seed = Math.imul(seed ^ (impact.seed >>> 0), 16777619);
+        if (graph !== this.interiorGraph || seed !== this.interiorSeed || !this.interiorResult) {
+          this.interiorResult = prepareGlassInteriors(graph, this.size, seed >>> 0, visible.flatMap(i => {
+            const core = i.pattern.topology?.regions.protectedCore;
+            return core ? [core] : (i.pattern.protectedRadius ?? 0) > 0 ? [{ kind: 'circle' as const, origin: i.origin, radius: i.pattern.protectedRadius! }] : [];
+          }));
+          this.interiorGraph = graph; this.interiorSeed = seed;
+        }
+        interior = this.interiorResult;
+      } else interior = { ok: false, message: '破片を抽出できないため内部反射を省略しました。' };
+    }
+    return { settings: this.values, light: this.sharedLight, geometry: this.result, details: this.details, interior };
   }
 }
