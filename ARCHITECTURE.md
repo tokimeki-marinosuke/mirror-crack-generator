@@ -154,3 +154,12 @@ type Impact = { id: string; origin: Point; seed: number; preset: StylePreset; pa
 画像変形が全て0でも、材質用の明示要求で既存の抽出を再利用できる。通常の製品経路の設定0の挙動は維持する。
 開発比較ページのみへの接続で、本番UI・既存のPNG入口は未変更。
 詳細は [断面と方向性反射](docs/GLASS_MATERIAL_EDGES.md) と [内部反射・微細ディテール](docs/GLASS_MATERIAL_TEXTURE.md) を参照。
+
+## ガラス材質の製品接続（第4段階）
+
+`EditorState.glass` は画像全体の材質設定を保持し、シネマティックを初期適用する。
+材質プリセット・光源・強度は形状・既存の画像変形から独立し、変更では分割を再計算しない。
+`renderPreview` と `exportPng` は同じ任意の材質フレームで `renderGlassScene` を共有する。
+内部反射は合成のみ、断面・エッジ・微細欠けは透明レイヤーにも適用する。
+無効/全効果0/フレーム省略時は旧描画へ委譲する。
+操作、プリセット値、優先関係、検証は [ガラス材質の製品接続](docs/GLASS_MATERIAL_CONTROLS.md) を参照。

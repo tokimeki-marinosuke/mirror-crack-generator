@@ -1,3 +1,4 @@
+import { GLASS_MATERIAL_PRESETS, isGlassMaterialActive, type GlassMaterialPreset } from '../core/glassMaterial';
 import { DEFAULT_SHARD_IMAGE_SETTINGS } from '../state/shardImageState';
 import type { SurfaceSettings } from '../state/fractureSettings';
 import { downloadPng, exportFileName, exportPng, type ExportMode } from '../image/exportPng';
@@ -14,7 +15,7 @@ const sliders = [
   { key: 'centerRadius', label: '中心領域の半径（基準長比）', min: 0, max: 80, step: 1, unit: '%' },
   { key: 'centerDensity', label: '中心の亀裂密度（0で中心を残す）', min: 0, max: 100, step: 1, unit: '%' },
   { key: 'lineWidth', label: '線幅（元画像基準）', min: 0.5, max: 6, step: 0.1, unit: 'px' },
-  { key: 'highlight', label: '反射の強さ', min: 0, max: 100, step: 1, unit: '%' },
+  { key: 'highlight', label: '従来の縁反射', min: 0, max: 100, step: 1, unit: '%' },
   { key: 'opacity', label: '不透明度', min: 0, max: 100, step: 1, unit: '%' },
 ] as const;
 
@@ -29,6 +30,14 @@ const shardSliders = [
   { key: 'rotation', label: '映りの回転' },
   { key: 'reflection', label: '破片ごとの明暗差' },
   { key: 'gap', label: '破片間の暗い隙間' },
+] as const;
+
+const materialSliders = [
+  { key: 'thickness', label: 'ガラスの厚み', max: 100, unit: '%' },
+  { key: 'lightDirection', label: '光源方向（0°右・90°下）', max: 360, unit: '°' },
+  { key: 'edgeReflection', label: 'エッジ反射強度', max: 100, unit: '%' },
+  { key: 'interiorReflection', label: '破片内部の反射強度', max: 100, unit: '%' },
+  { key: 'microDetail', label: '微細ディテール量', max: 100, unit: '%' },
 ] as const;
 
 type Mode = 'add' | 'move';
@@ -59,7 +68,15 @@ export function mountEditor(root: HTMLElement): void {
       <div class="stage"><canvas aria-label="画像プレビュー。クリックで衝撃点を追加、マーカーをドラッグして移動"></canvas>
       <p class="placeholder">ここに画像をドロップ<br><span>または「画像を選択」から開く</span></p></div>
       <p class="status" role="status">画像を読み込むとプレビューが表示されます。</p>
-    </section><section class="panel settings">      <h2>画像全体の映り</h2>
+    </section><section class="panel settings"><h2>ガラス材質</h2>
+      <fieldset id="material-settings" disabled><legend class="sr-only">画像全体のガラス材質</legend>
+      <label class="control"><span>材質効果を有効にする</span><input id="material-enabled" type="checkbox"></label>
+      <label class="control">材質プリセット<select id="material-preset">${Object.entries(GLASS_MATERIAL_PRESETS).map(([id,p])=>`<option value="${id}">${p.label}</option>`).join('')}<option value="custom" disabled>カスタム</option></select></label>
+      <p class="hint">画像全体に適用します。シネマティックは見栄えと視認性のバランス型、リアルは控えめ、ドラマティックは強調型。選択後も自由に調整できます。</p>
+      ${materialSliders.map(s=>`<label class="control" for="material-${s.key}">${s.label}<output id="material-${s.key}-value"></output></label><input id="material-${s.key}" type="range" min="0" max="${s.max}" step="1">`).join('')}
+      <button type="button" id="material-reset">材質効果を0に戻す</button>
+      <p class="hint">厚みは線幅・隙間幅とは独立です。新しいエッジ反射を0にすると各点の「従来の縁反射」を使用します。内部反射は合成PNGだけに適用し、保護領域と重なる破片全体を維持します。</p>
+      </fieldset><p id="material-status" role="status"></p><hr><h2>画像全体の映り</h2>
       <fieldset id="shard-settings" disabled><legend class="sr-only">鏡の破片の画像変形</legend>
       <p class="hint">全ての衝撃点で区切られた破片に適用します。亀裂の縁の反射・破断面幅とは別の設定です。</p>
       <button type="button" id="shard-demo">映りの変化を試す</button>
@@ -109,7 +126,14 @@ export function mountEditor(root: HTMLElement): void {
   function redraw(): void {
     try {
       const composition=state?.shards.resolve(state.impacts);
-      renderPreview(canvas, image, state?.impacts ?? [], state?.selectedId ?? null, composition);
+      const material=state && state.impacts.length && isGlassMaterialActive(state.glass.settings) ? state.glass.prepare(state.impacts, composition) : undefined;
+      renderPreview(canvas, image, state?.impacts ?? [], state?.selectedId ?? null, composition, material);
+      const glassMessage=get('#material-status');
+      if(!state?.impacts.length){glassMessage.textContent=image?'衝撃点を追加すると材質効果を確認できます。':'';glassMessage.dataset.status='waiting';}
+      else if(!material){glassMessage.textContent='材質効果は無効です（従来描画）。';glassMessage.dataset.status='off';}
+      else if(!material.geometry.ok){glassMessage.textContent='材質を安全に準備できないため、従来描画で表示・保存します。';glassMessage.dataset.status='fallback';}
+      else if(material.interior && !material.interior.ok){glassMessage.textContent='内部反射を省略しています。亀裂の材質効果は維持します。';glassMessage.dataset.status='partial';}
+      else {const p=material.interior?.ok?material.interior.plan:undefined;glassMessage.textContent=p?`内部反射 ${p.surfaces.length}破片 / 保護 ${p.protectedCount} / 小片据え置き ${p.budgetCount}`:'断面・エッジ反射・微細ディテールを適用中。';glassMessage.dataset.status='active';}
       const message=get('#shard-status');
       if(!composition){message.textContent='映りの変化は0です。';message.dataset.status='off';}
       else if(!composition.extraction.ok){message.textContent='破片を安全に抽出できないため、元画像＋亀裂で表示・保存します。主要亀裂数・蜘蛛の巣の密度を下げるか、衝撃点を減らして再試行してください。';message.dataset.status='fallback';}
@@ -131,6 +155,14 @@ export function mountEditor(root: HTMLElement): void {
     } else list.add(new Option('衝撃点なし', ''));
     list.disabled = !active;
     settings.disabled = !active;
+    get<HTMLFieldSetElement>('#material-settings').disabled=!image;
+    get<HTMLInputElement>('#material-enabled').checked=state?.glass.settings.enabled??false;
+    get<HTMLSelectElement>('#material-preset').value=state?.glass.preset??'custom';
+    for(const slider of materialSliders){
+      const value=state?.glass.settings[slider.key]??0;
+      get<HTMLInputElement>(`#material-${slider.key}`).value=String(value);
+      get<HTMLOutputElement>(`#material-${slider.key}-value`).value=`${value}${slider.unit}`;
+    }
     get<HTMLFieldSetElement>('#shard-settings').disabled=!image||!state?.impacts.length;
     for(const slider of shardSliders){
       const value=state?.shards.settings[slider.key]??0;
@@ -216,8 +248,9 @@ export function mountEditor(root: HTMLElement): void {
     exporting = true; syncExportControls();
     feedback.textContent = 'PNGを作成しています…';
     try {
-      const composition=mode==='composite'?state.shards.resolve(impacts):undefined;
-      const blob = await exportPng(source, impacts, mode, composition);
+      const composition=state.shards.resolve(impacts);
+      const material=isGlassMaterialActive(state.glass.settings)&&impacts.length?state.glass.prepare(impacts,composition):undefined;
+      const blob = await exportPng(source, impacts, mode, composition, material);
       downloadPng(blob, filename);
       feedback.textContent = `${filename} の保存を開始しました（${source.naturalWidth} × ${source.naturalHeight}px）。`;
     } catch (error) {
@@ -265,6 +298,13 @@ export function mountEditor(root: HTMLElement): void {
     const control=get<HTMLInputElement>(`#shard-${slider.key}`);
     control.addEventListener('input',()=>{const value=control.valueAsNumber;queue(`shard-${slider.key}`,()=>state?.shards.update({[slider.key]:value}));});
   }
+  for(const slider of materialSliders){
+    const control=get<HTMLInputElement>(`#material-${slider.key}`);
+    control.addEventListener('input',()=>{const value=control.valueAsNumber;queue(`material-${slider.key}`,()=>state?.glass.update({[slider.key]:value}));});
+  }
+  get('#material-enabled').addEventListener('change',()=>edit(()=>state?.glass.update({enabled:get<HTMLInputElement>('#material-enabled').checked})));
+  get('#material-preset').addEventListener('change',()=>edit(()=>state?.glass.applyPreset(get<HTMLSelectElement>('#material-preset').value as GlassMaterialPreset)));
+  get('#material-reset').addEventListener('click',()=>edit(()=>state?.glass.reset()));
   get('#shard-demo').addEventListener('click',()=>edit(()=>state?.shards.update({displacement:60,rotation:45,reflection:50,gap:25})));
   get('#shard-reset').addEventListener('click',()=>edit(()=>state?.shards.update(DEFAULT_SHARD_IMAGE_SETTINGS)));
   function applySeed(): boolean {

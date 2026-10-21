@@ -151,3 +151,7 @@ Vite の `base` は `/mirror-crack-generator/` に設定しています。
 材質の第2段階の断面・方向性反射は [局所反射](GLASS_MATERIAL_EDGES.md)、
 第3段階の破片内部グラデーション・微細欠けと実Canvas検証は [内部質感](GLASS_MATERIAL_TEXTURE.md) を参照。
 比較は `/mirror-crack-generator/tests/glass-material.html` で行い、本番UIにはまだ接続しない。
+
+第4段階の本番材質UI・シネマティック等のプリセットと共通プレビュー/PNG検証は
+[ガラス材質の製品接続](GLASS_MATERIAL_CONTROLS.md) を参照。通常画面の材質効果は既定で有効。
+従来の画素を確認するときは「材質効果を0に戻す」を使う。

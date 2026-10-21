@@ -9,7 +9,7 @@ export type GlassMaterialSettings = Readonly<{
   /** 画像座標で0=右、90=下。左上は225度。強度ではない。 */
   lightDirection: number;
 }>;
-/** 第1段階は無効が初期値。シネマティックの既定適用は視覚効果の実装後。 */
+/** 低レベルの初期値は無効・全0。製品のシネマティック初期化はEditorStateが行う。 */
 export const DEFAULT_GLASS_MATERIAL: GlassMaterialSettings = Object.freeze({
   enabled: false, thickness: 0, edgeReflection: 0, interiorReflection: 0, microDetail: 0, lightDirection: 225,
 });
@@ -30,3 +30,11 @@ export function createGlassLight(angle: number): GlassLight {
   const x = Math.cos(radians), y = Math.sin(radians), slope = Math.SQRT1_2;
   return Object.freeze({ angle: normalized, screenDirection: Object.freeze({ x, y }), direction: Object.freeze({ x: x * slope, y: y * slope, z: slope }) });
 }
+
+/** Material presets change shading only; geometry, gaps, line width and image transforms stay independent. */
+export const GLASS_MATERIAL_PRESETS = Object.freeze({
+  cinematic: Object.freeze({ label: 'シネマティック', settings: resolveGlassMaterial({ enabled: true, thickness: 32, edgeReflection: 60, interiorReflection: 25, microDetail: 15, lightDirection: 225 }) }),
+  real: Object.freeze({ label: 'リアル', settings: resolveGlassMaterial({ enabled: true, thickness: 12, edgeReflection: 30, interiorReflection: 12, microDetail: 5, lightDirection: 225 }) }),
+  dramatic: Object.freeze({ label: 'ドラマティック', settings: resolveGlassMaterial({ enabled: true, thickness: 65, edgeReflection: 90, interiorReflection: 45, microDetail: 55, lightDirection: 225 }) }),
+});
+export type GlassMaterialPreset = keyof typeof GLASS_MATERIAL_PRESETS;

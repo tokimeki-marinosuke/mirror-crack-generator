@@ -76,3 +76,44 @@ export function verifyGlassTexture(): string[] {
   check(maxDifference > 0 && maxDifference <= 10, 'maximum-strength interior effect stays subtle');
   return passed;
 }
+
+/** Product preview and real PNG exports share the material renderer at source resolution. */
+export async function verifyGlassProduct(): Promise<string[]> {
+  const { exportPng } = await import('../src/image/exportPng');
+  const { renderPreview } = await import('../src/render/preview');
+  const passed: string[] = [];
+  const check = (condition: boolean, name: string) => { if (!condition) throw new Error(name); passed.push(name); };
+  const size = { width: 320, height: 240 }, image = new Image();
+  const source = document.createElement('canvas'); source.width = 320; source.height = 240;
+  const sourceCtx = source.getContext('2d')!; sourceCtx.fillStyle = '#607080aa'; sourceCtx.fillRect(0, 0, 240, 240);
+  image.src = source.toDataURL(); await image.decode();
+  const state = new EditorState(size); state.add({ x: 140, y: 100 }); state.update({ seed: 42 });
+  state.updateSurface({ widthPercent: 40 }); state.shards.update({ displacement: 30, reflection: 20 });
+  const composition = state.shards.resolve(state.impacts);
+  const readPng = async (frame: GlassMaterialFrame | undefined, mode: 'composite' | 'cracks') => {
+    const bitmap = await createImageBitmap(await exportPng(image, state.impacts, mode, composition, frame));
+    const c = document.createElement('canvas'); c.width = bitmap.width; c.height = bitmap.height; c.getContext('2d')!.drawImage(bitmap, 0, 0); bitmap.close(); return c;
+  };
+  const preview = document.createElement('canvas');
+  preview.style.width = `${size.width / devicePixelRatio}px`; preview.style.height = `${size.height / devicePixelRatio}px`; document.body.append(preview);
+  try {
+    for (const id of ['cinematic', 'real', 'dramatic'] as const) {
+      state.glass.applyPreset(id); const frame = state.glass.prepare(state.impacts, composition);
+      for (const mode of ['composite', 'cracks'] as const) {
+        const png = await readPng(frame, mode), expected = document.createElement('canvas'); expected.width = 320; expected.height = 240;
+        renderGlassScene(expected.getContext('2d')!, image, state.impacts, size, mode, composition, frame);
+        check(png.width === 320 && png.height === 240 && png.toDataURL() === expected.toDataURL(), `${id} ${mode}: real PNG matches shared renderer at original resolution`);
+        if (mode === 'composite') {
+          renderPreview(preview, image, state.impacts, state.selectedId, composition, frame);
+          const a = png.getContext('2d')!.getImageData(0, 0, 320, 240).data, b = preview.getContext('2d')!.getImageData(0, 0, 320, 240).data;
+          let differences = 0;
+          for (let y = 0; y < 240; y++) for (let x = 0; x < 320; x++) if (Math.hypot(x - 140, y - 100) > 30) for (let k = 0; k < 4; k++) { const i = (y * 320 + x) * 4 + k; if (a[i] !== b[i]) differences++; }
+          check(differences === 0, `${id}: preview and composite PNG agree outside editor marker`);
+        }
+      }
+    }
+    state.glass.reset(); const zero = state.glass.prepare(state.impacts, composition);
+    for (const mode of ['composite', 'cracks'] as const) check((await readPng(zero, mode)).toDataURL() === (await readPng(undefined, mode)).toDataURL(), `${mode}: all effects zero matches legacy PNG exactly`);
+    return passed;
+  } finally { preview.remove(); }
+}

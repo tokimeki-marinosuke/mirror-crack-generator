@@ -44,5 +44,6 @@ const {chromium}=require('playwright');const assert=require('node:assert/strict'
  });
  assert.deepEqual(invariants,{protectedPixels:0,restored:true,repeat:true,fallback:true,active:true});
  const textureChecks=await page.evaluate(async()=>{const {verifyGlassTexture}=await import('/mirror-crack-generator/tests/glass-texture.browser.ts');return verifyGlassTexture();});console.log(`Native glass texture: ${textureChecks.length} checks passed.`);
+ const productChecks=await page.evaluate(async()=>{const {verifyGlassProduct}=await import('/mirror-crack-generator/tests/glass-texture.browser.ts');return await verifyGlassProduct();});console.log(`Product material rendering: ${productChecks.length} checks passed.`);
  assert.deepEqual(errors,[]);console.log(`Glass material stage 3: ${cases} image/count/protection/width cases + motion off/seed, direct RGBA and both PNG comparisons passed; light/thickness reuse geometry; directional effects, disabled legacy equivalence and protected center passed.`);
 }finally{await browser.close()}})().catch(e=>{console.error(e);process.exitCode=1});

@@ -1,4 +1,4 @@
-import { createGlassLight, DEFAULT_GLASS_MATERIAL, resolveGlassMaterial, type GlassLight, type GlassMaterialSettings } from '../core/glassMaterial';
+import { createGlassLight, DEFAULT_GLASS_MATERIAL, GLASS_MATERIAL_PRESETS, type GlassMaterialPreset, resolveGlassMaterial, type GlassLight, type GlassMaterialSettings } from '../core/glassMaterial';
 import { prepareGlassGeometry, type GlassGeometryResult } from '../core/glassGeometry';
 import type { Size } from '../core/geometry';
 import type { Impact } from './editorState';
@@ -6,8 +6,9 @@ import { ShardImageState, type ShardComposition } from './shardImageState';
 import { prepareGlassDetails, prepareGlassInteriors, type GlassDetail, type GlassInteriorResult } from '../core/glassTexture';
 import type { ShardGraph } from '../core/shardRegions';
 export type GlassMaterialFrame = Readonly<{ settings: GlassMaterialSettings; light: GlassLight; geometry: GlassGeometryResult; details?: readonly GlassDetail[]; interior?: GlassInteriorResult }>;
-/** 開発用の材質管理。既存EditorStateには組み込まず、光源と幾何キャッシュを分離する。 */
+/** 画像全体の材質設定。光源・描画強度と幾何キャッシュを分離する。 */
 export class GlassMaterialState {
+  private selectedPreset: GlassMaterialPreset | undefined;
   private values = DEFAULT_GLASS_MATERIAL;
   private sharedLight = createGlassLight(this.values.lightDirection);
   private inputs: readonly Impact[] = [];
@@ -20,13 +21,19 @@ export class GlassMaterialState {
   private interiorResult?: GlassInteriorResult;
   private interiorSeed?: number;
   constructor(private readonly size: Size) { this.interiorSource = new ShardImageState(size); }
+  get preset(): GlassMaterialPreset | undefined { return this.selectedPreset; }
+  applyPreset(id: GlassMaterialPreset): void {
+    if (!Object.hasOwn(GLASS_MATERIAL_PRESETS, id)) throw new Error('材質プリセットが不正です。');
+    this.update(GLASS_MATERIAL_PRESETS[id].settings); this.selectedPreset = id;
+  }
+  reset(): void { this.update(DEFAULT_GLASS_MATERIAL); }
   get settings(): GlassMaterialSettings { return this.values; }
   get light(): GlassLight { return this.sharedLight; }
   get preparations(): number { return this.builds; }
   update(patch: Partial<GlassMaterialSettings>): void {
     const next = resolveGlassMaterial({ ...this.values, ...patch });
     if (next.lightDirection !== this.values.lightDirection) this.sharedLight = createGlassLight(next.lightDirection);
-    this.values = next;
+    this.values = next; this.selectedPreset = undefined;
   }
   prepare(impacts: readonly Impact[], composition?: ShardComposition): GlassMaterialFrame {
     const visible = impacts.filter(i => i.params.opacity > 0);

@@ -1,3 +1,4 @@
+import { GlassMaterialState } from './glassMaterialState';
 import { ShardImageState } from './shardImageState';
 import { generateFractureSurface, type FractureGeometry } from '../core/generateFractureSurface';
 import { DEFAULT_SURFACE_SETTINGS, resolveFractureSettings, type SurfaceSettings } from './fractureSettings';
@@ -41,7 +42,8 @@ export class EditorState {
   private selected: number | null = null;
   private nextId = 1;
   readonly shards: ShardImageState;
-  constructor(readonly size: Size) { this.shards = new ShardImageState(size); }
+  readonly glass: GlassMaterialState;
+  constructor(readonly size: Size) { this.shards = new ShardImageState(size); this.glass = new GlassMaterialState(size); this.glass.applyPreset('cinematic'); }
   get impacts(): readonly Impact[] { return this.items; }
   get selectedId(): number | null { return this.selected; }
   get active(): Impact | undefined { return this.items.find(impact => impact.id === this.selected); }
