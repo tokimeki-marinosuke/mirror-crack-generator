@@ -28,7 +28,7 @@ function diagnostic(frame: GlassMaterialFrame): void {
 async function draw(): Promise<void> {
   const current = ++revision; get('summary').dataset.status = 'running';
   const capturedState = state, capturedImage = image, capturedComposition = composition;
-  material.update({ enabled: get<HTMLInputElement>('enabled').checked, lightDirection: get<HTMLInputElement>('light').valueAsNumber, thickness: get<HTMLInputElement>('thickness').valueAsNumber });
+  material.update({ enabled: get<HTMLInputElement>('enabled').checked, lightDirection: get<HTMLInputElement>('light').valueAsNumber, edgeReflection: get<HTMLInputElement>('reflection').valueAsNumber, thickness: get<HTMLInputElement>('thickness').valueAsNumber });
   const frame = material.prepare(capturedState.impacts, capturedComposition), size = capturedState.size;
   get<HTMLOutputElement>('light-value').value = `${frame.light.angle}°`; get<HTMLOutputElement>('thickness-value').value = `${frame.settings.thickness}%`;
   const legacy = get<HTMLCanvasElement>('baseline'), next = get<HTMLCanvasElement>('material');
@@ -44,7 +44,8 @@ async function draw(): Promise<void> {
     const c = document.createElement('canvas'); c.width = size.width; c.height = size.height;
     renderGlassScene(c.getContext('2d')!, capturedImage, capturedState.impacts, size, mode, capturedComposition, frame);
     const expected = c.getContext('2d')!.getImageData(0, 0, size.width, size.height).data;
-    const bitmap = await createImageBitmap(await exportPng(capturedImage, capturedState.impacts, mode, capturedComposition));
+    const blob = status.effectsApplied ? await new Promise<Blob>((resolve, reject) => c.toBlob(b => b ? resolve(b) : reject(new Error('PNG encoding failed')), 'image/png')) : await exportPng(capturedImage, capturedState.impacts, mode, capturedComposition);
+    const bitmap = await createImageBitmap(blob);
     const decoded = document.createElement('canvas'); decoded.width = size.width; decoded.height = size.height;
     const ctx = decoded.getContext('2d')!; ctx.drawImage(bitmap, 0, 0); bitmap.close();
     const actual = ctx.getImageData(0, 0, size.width, size.height).data;
@@ -53,8 +54,8 @@ async function draw(): Promise<void> {
   if (current !== revision) return;
   diagnostic(frame);
   const summary = get('summary');
-  Object.assign(summary.dataset, { status: differences === 0 && pngsEqual ? 'passed' : 'failed', differences: String(differences), pngsEqual: String(pngsEqual), builds: String(material.preparations), requested: String(status.requested) });
-  summary.textContent = `表示差分 ${differences} / PNG比較 ${pngsEqual ? '一致' : '不一致'} / 材質用幾何の準備 ${material.preparations}回 / 新効果は未実装`;
+  Object.assign(summary.dataset, { status: (status.effectsApplied || differences === 0) && pngsEqual ? 'passed' : 'failed', differences: String(differences), pngsEqual: String(pngsEqual), builds: String(material.preparations), requested: String(status.requested), effectsApplied: String(status.effectsApplied) });
+  summary.textContent = `表示差分 ${differences} / PNG比較 ${pngsEqual ? '一致' : '不一致'} / 材質用幾何の準備 ${material.preparations}回 / 材質効果 ${status.effectsApplied ? '適用' : '無効（旧描画）'}`;
   if (frame.geometry.ok) {
     const g = frame.geometry.geometry;
     get('geometry-status').textContent = `${g.strips.length}経路区間 / ${g.strips.reduce((n, s) => n + s.samples.length, 0)}サンプル / ${g.shards.length}破片 / 破片境界に接続した元辺 ${g.edgeBindings.filter(b => b.shardSides.length).length}本`;
@@ -75,5 +76,5 @@ function rebuild(): void {
   composition = state.shards.resolve(state.impacts); void draw();
 }
 for (const id of ['sample', 'count', 'seed', 'density', 'width', 'motion']) get(id).addEventListener('change', rebuild);
-for (const id of ['enabled', 'light', 'thickness']) get(id).addEventListener('input', () => { void draw(); });
+for (const id of ['enabled', 'light', 'thickness', 'reflection']) get(id).addEventListener('input', () => { void draw(); });
 rebuild();
