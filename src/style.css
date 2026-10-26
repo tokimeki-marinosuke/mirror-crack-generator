@@ -21,6 +21,8 @@ canvas{touch-action:none}.sr-only{position:absolute;width:1px;height:1px;padding
 
 #reset-settings{width:100%}
 
-#advanced-settings>summary{cursor:pointer;font-weight:700;font-size:16px}
-#advanced-settings>summary:focus-visible{outline:2px solid #5ff5d2;outline-offset:4px}
+.settings details>summary{cursor:pointer;font-weight:700;font-size:16px}
+.settings details>summary:focus-visible{outline:2px solid #5ff5d2;outline-offset:4px}
 #point-reset{width:100%;margin-top:12px}
+
+.preset-save{display:flex;flex-wrap:wrap;gap:6px}.preset-save input{min-width:0;width:100%;background:#252f40;color:#e9edf5;border:1px solid #4a5a73;border-radius:6px;padding:9px}.settings details{margin-top:18px}

@@ -179,3 +179,6 @@ Vite の `base` は `/mirror-crack-generator/` に設定しています。
 Playwrightでの検証は `node tests/reset-settings-ui.cjs`（必要ならNODE_PATHを指定）。
 
 材質・映り・亀裂は初期状態で閉じた「高度な設定」内。個別リセットは各グループの起動時設定へ戻す。選択点リセットは他点を保持する。
+
+プリセットは常時表示し、材質・映り・選択点それぞれの高度な設定だけ折りたたむ。PNG出力は画像と衝撃点操作の間。
+`node tests/preset-library-ui.cjs`で保存・再読み込み・呼び出し・削除・保存拒否、描画一致と両PNGを確認できる（PlaywrightのNODE_PATHが必要な環境では指定）。

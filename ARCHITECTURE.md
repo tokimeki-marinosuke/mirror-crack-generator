@@ -203,5 +203,8 @@ type Impact = { id: string; origin: Point; seed: number; preset: StylePreset; pa
 UIは既存の編集キューをフラッシュしてから初期化し、プレビューを再描画する。画像オブジェクトは置換しない。
 画像なし・読み込み中・保存中はリセットボタンを無効化する。通常UIの個別リセットも0ではなく初期値へ戻す。低レベルの効果0 APIは互換用に維持する。
 
-材質・映り・亀裂の詳細はネイティブの`details#advanced-settings`内に置き、初期状態で閉じる。
+材質・映り・亀裂の詳細はそれぞれネイティブの`details#material-advanced`、`details#shard-advanced`、`details#point-advanced`内に置き、初期状態で閉じる。プリセット操作は折りたたみの外。
 `resetPoints(id)`は指定点のみ、引数なしは全点を復帰する。材質はシネマティック、映りはAPPLICATION_SHARD_DEFAULTSを使う。
+
+## カスタムプリセット
+`state/customPresets.ts`は保存形式・入力検証・同名上書きと件数上限を扱う純粋関数。UIはlocalStorageの読み書きを例外処理し、保存成功後だけライブラリを更新する。名前はOptionのテキストとして表示する。画像・座標・シード・生成幾何は保存しない。選択点の保存値はスタイル・実効パラメータ・黒線濃度で、適用時は個別値を優先し旧破断面強調を0に保つ。

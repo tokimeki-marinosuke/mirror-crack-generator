@@ -3,7 +3,7 @@ const {chromium}=require('playwright');const assert=require('node:assert/strict'
  const page=await browser.newPage({viewport:{width:1500,height:1050},deviceScaleFactor:1});const errors=[];page.on('pageerror',e=>errors.push(e.message));
  await page.goto(process.env.EDITOR_URL||'http://127.0.0.1:5173/mirror-crack-generator/');
  await page.locator('#image-file').setInputFiles(path.resolve('docs/samples/light.png'));await page.waitForFunction(()=>!document.querySelector('[data-mode=add]').disabled);
- await page.locator('#advanced-settings summary').click();
+ for(const group of ['material','shard','point'])await page.locator('#'+group+'-advanced summary').click();
  const zeroShards=async()=>{for(const key of ['displacement','rotation','reflection','gap']){await page.locator('#shard-'+key).fill('0');await page.locator('#shard-'+key).dispatchEvent('input');}await page.evaluate(()=>new Promise(requestAnimationFrame));};
  const canvas=page.locator('canvas'),rect=await canvas.boundingBox();await canvas.click({position:{x:rect.width*.5,y:rect.height*.5}});await page.locator('#preset').selectOption('web');
  await zeroShards();

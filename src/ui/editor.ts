@@ -1,3 +1,4 @@
+import { PRESET_STORAGE_KEY, decodePresets, savePreset, type SavedPreset, type PresetGroup } from '../state/customPresets';
 import { MATERIAL_SCALES, SHARD_SCALES, POINT_SCALES, DARKNESS_SCALE, controlPosition, controlValue, type ControlScale } from '../state/controlScale';
 import { APPLICATION_SHARD_DEFAULTS, createApplicationEditor, resetApplicationSettings } from '../state/applicationDefaults';
 import { effectiveImpactStrength, displayImpactStrength } from '../core/effectRanges';
@@ -40,6 +41,9 @@ const materialSliders = [
   { key: 'microDetail', label: '微細ディテール量', max: 100, unit: '%' },
 ] as const;
 
+function savedControls(group: PresetGroup): string {
+ return `<label class="control">保存済みプリセット<select id="${group}-saved"><option value="">選択してください</option></select></label><div class="preset-save"><input id="${group}-name" type="text" maxlength="40" aria-label="保存するプリセット名" placeholder="プリセット名"><button id="${group}-save" type="button">保存</button><button id="${group}-delete" type="button">削除</button></div><p id="${group}-save-status" class="hint" role="status"></p>`;
+}
 type Mode = 'add' | 'move';
 
 export function mountEditor(root: HTMLElement): void {
@@ -49,7 +53,12 @@ export function mountEditor(root: HTMLElement): void {
     <main><section class="panel"><h2>画像</h2>
       <label class="upload">画像を選択<input id="image-file" type="file" accept="image/png,image/jpeg,image/webp"></label>
       <p class="hint">PNG / JPEG / WebP · ドロップ対応</p>
-      <p class="metadata">画像未選択</p><hr><h2>衝撃点</h2>
+      <p class="metadata">画像未選択</p>      <hr><h2>PNG出力</h2>
+      <button type="button" id="export-composite" disabled>合成PNGを保存</button>
+      <button type="button" id="export-cracks" disabled>亀裂のみPNGを保存</button>
+      <p class="hint">元画像の解像度で保存します。マーカーは含めません。亀裂のみPNGは背景が透明です。</p>
+      <p id="export-status" role="status"></p>
+<hr><h2>衝撃点</h2>
       <div class="tools" role="group" aria-label="衝撃点の操作">
         <button type="button" data-mode="add" aria-pressed="true" disabled>追加</button>
         <button type="button" data-mode="move" aria-pressed="false" disabled>移動</button>
@@ -62,33 +71,32 @@ export function mountEditor(root: HTMLElement): void {
       <hr><h2>設定のリセット</h2>
       <button type="button" id="reset-settings" disabled>すべての調整を初期値に戻す</button>
       <p class="hint">材質・映り・全衝撃点を基準の設定に戻します。画像・衝撃点の位置・選択は保持し、シードは1へ戻します。</p>
-      <hr><h2>PNG出力</h2>
-      <button type="button" id="export-composite" disabled>合成PNGを保存</button>
-      <button type="button" id="export-cracks" disabled>亀裂のみPNGを保存</button>
-      <p class="hint">元画像の解像度で保存します。マーカーは含めません。亀裂のみPNGは背景が透明です。</p>
-      <p id="export-status" role="status"></p>
     </section><section class="workspace" aria-label="画像ドロップ領域">
       <div class="stage"><canvas aria-label="画像プレビュー。クリックで衝撃点を追加、マーカーをドラッグして移動"></canvas>
       <p class="placeholder">ここに画像をドロップ<br><span>または「画像を選択」から開く</span></p></div>
       <p class="status" role="status">画像を読み込むとプレビューが表示されます。</p>
-    </section><section class="panel settings"><details id="advanced-settings"><summary>高度な設定</summary><p class="hint">材質・映り・選択点の亀裂を細かく調整できます。</p><h2>ガラス材質</h2>
+    </section><section class="panel settings"><h2>ガラス材質</h2>
       <fieldset id="material-settings" disabled><legend class="sr-only">画像全体のガラス材質</legend>
       <label class="control"><span>材質効果を有効にする</span><input id="material-enabled" type="checkbox"></label>
       <label class="control">材質プリセット<select id="material-preset">${Object.entries(GLASS_MATERIAL_PRESETS).map(([id,p])=>`<option value="${id}">${p.label}</option>`).join('')}<option value="custom" disabled>カスタム</option></select></label>
+      ${savedControls('material')}<details id="material-advanced"><summary>高度な設定</summary>
       <p class="hint">画像全体に適用します。シネマティックは見栄えと視認性のバランス型、リアルは控えめ、ドラマティックは強調型。選択後も自由に調整できます。</p>
       ${materialSliders.map(s=>`<label class="control" for="material-${s.key}">${s.label}<output id="material-${s.key}-value"></output></label><input id="material-${s.key}" type="range" min="0" max="${s.max}" step="0.1">`).join('')}
       <button type="button" id="material-reset">材質をデフォルトに戻す</button>
       <p class="hint">厚み・反射幅・黒い亀裂の太さは独立です。つまみの中央50%が今回の初期の見た目です。横の数値は実際の設定値です。右側でさらに強められます。内部反射は合成PNGだけに適用し、保護領域と重なる破片全体を維持します。</p>
-      </fieldset><p id="material-status" role="status"></p><hr><h2>画像全体の映り</h2>
+      </details></fieldset><p id="material-status" role="status"></p><hr><h2>画像全体の映り</h2>
       <fieldset id="shard-settings" disabled><legend class="sr-only">鏡の破片の画像変形</legend>
+      <label class="control">映りプリセット<select id="shard-preset"><option value="default">デフォルト</option><option value="subtle">控えめ</option><option value="none">変形なし</option><option value="custom" disabled>カスタム</option></select></label>
+      ${savedControls('shard')}<details id="shard-advanced"><summary>高度な設定</summary>
       <p class="hint">全ての衝撃点で区切られた破片に適用します。ずれ・回転・明暗差は中央50%が初期の見た目です。横の数値は実効値です。隙間0は左端のままです。</p>
       <button type="button" id="shard-demo">映りの変化を試す</button>
       ${shardSliders.map(s=>`<label class="control" for="shard-${s.key}">${s.label}<output id="shard-${s.key}-value">0%</output></label><input id="shard-${s.key}" type="range" min="0" max="100" step="1" value="0">`).join('')}
       <button type="button" id="shard-reset">映りをデフォルトに戻す</button>
       <p class="hint">中心密度0%の領域と重なる破片全体を保護します。大きい破片から最大256個を変更し、小片は元画像のまま残します。合成PNGに反映し、亀裂のみPNGは従来どおりです。</p>
-      </fieldset><p id="shard-status" role="status"></p><hr><h2>選択点の調整</h2>
+      </details></fieldset><p id="shard-status" role="status"></p><hr><h2>選択点の調整</h2>
       <fieldset id="settings" disabled><legend class="sr-only">亀裂設定</legend>
       <label class="control">プリセット<select id="preset"><option value="realistic">Realistic</option><option value="anime">Anime</option>${Object.entries(EFFECT_PRESETS).map(([id, p]) => `<option value="${id}">${p.label}</option>`).join('')}</select></label>
+      ${savedControls('point')}<details id="point-advanced"><summary>高度な設定</summary>
       <p class="hint">切り替えると調整値を初期化します。位置・シードは保持します。</p>
       <label class="control" for="impact-strength">衝撃の強さ<output id="impact-strength-value"></output></label>
       <input id="impact-strength" type="range" min="0" max="100" step="1" value="50">
@@ -102,8 +110,7 @@ export function mountEditor(root: HTMLElement): void {
       <button type="button" id="regenerate">再生成</button>
       <button type="button" id="point-reset">選択点の亀裂をデフォルトに戻す</button>
       <p class="hint">再生成でシードを1つ進めます。スライダー操作ではシードを保持します。</p>
-      </fieldset>
-      </details>
+      </details></fieldset>
     </section></main>`;
   const get = <T extends HTMLElement>(selector: string): T => root.querySelector<T>(selector)!;
   const canvas = get<HTMLCanvasElement>('canvas');
@@ -116,6 +123,8 @@ export function mountEditor(root: HTMLElement): void {
   const preset = get<HTMLSelectElement>('#preset');
   let image: HTMLImageElement | null = null;
   let state: EditorState | null = null;
+  let saved: SavedPreset[] = [];
+  try { saved = decodePresets(localStorage.getItem(PRESET_STORAGE_KEY)); } catch { get('#material-save-status').textContent='保存済みプリセットを読み込めません。ブラウザの保存設定をご確認ください。'; }
   let mode: Mode = 'add';
   let request = 0;
   let imageName = 'image';
@@ -159,6 +168,14 @@ export function mountEditor(root: HTMLElement): void {
   }
   function refresh(): void {
     const active = state?.active;
+    for(const group of ['material','shard','point'] as const){
+      const select=get<HTMLSelectElement>(`#${group}-saved`), value=select.value;
+      select.replaceChildren(new Option('選択してください',''));
+      saved.forEach(p=>{if(p.group===group)select.add(new Option(p.name,p.name));});
+      select.value=Array.from(select.options).some(o=>o.value===value)?value:'';
+    }
+    const shard=state?.shards.settings;
+    get<HTMLSelectElement>('#shard-preset').value=shard&&Object.keys(APPLICATION_SHARD_DEFAULTS).every(k=>shard[k as keyof typeof shard]===APPLICATION_SHARD_DEFAULTS[k as keyof typeof shard])?'default':shard&&Object.values(shard).every(v=>v===0)?'none':shard&&shard.displacement===30&&shard.rotation===20&&shard.reflection===30&&shard.gap===0?'subtle':'custom';
     list.replaceChildren();
     if (state?.impacts.length) {
       for (const impact of state.impacts) list.add(new Option(`衝撃点 ${impact.id}`, String(impact.id)));
@@ -323,6 +340,37 @@ export function mountEditor(root: HTMLElement): void {
     const control=get<HTMLInputElement>(`#material-${slider.key}`);
     control.addEventListener('input',()=>{const value=control.valueAsNumber;queue(`material-${slider.key}`,()=>state?.glass.update({[slider.key]:slider.key==='lightDirection'?value:controlValue(value,MATERIAL_SCALES[slider.key])}));});
   }
+  for(const group of ['material','shard','point'] as const){
+    const message=get(`#${group}-save-status`);
+    get(`#${group}-save`).addEventListener('click',()=>edit(()=>{
+      if(!state)return;
+      const name=get<HTMLInputElement>(`#${group}-name`).value.trim();
+      let entry:SavedPreset;
+      if(group==='material')entry={group,name,values:{...state.glass.settings}};
+      else if(group==='shard')entry={group,name,values:{...state.shards.settings}};
+      else {if(!state.active)return;entry={group,name,values:{params:{...state.active.params},darkness:state.active.surface?.darkness??60,style:state.active.preset}};}
+      try {const next=savePreset(saved,entry);localStorage.setItem(PRESET_STORAGE_KEY,JSON.stringify(next));saved=next;message.textContent=`「${name}」を保存しました。同じ名前は上書きします。`;}
+      catch {message.textContent='保存できません。名前（1〜40文字）、件数（各20件）、ブラウザの保存設定をご確認ください。';}
+    }));
+    get(`#${group}-saved`).addEventListener('change',()=>edit(()=>{
+      const value=get<HTMLSelectElement>(`#${group}-saved`).value;if(value===''||!state)return;
+      const entry=saved.find(p=>p.group===group&&p.name===value);if(!entry)return;
+      if(entry.group==='material')state.glass.update(entry.values);
+      else if(entry.group==='shard')state.shards.update(entry.values);
+      else if(state.active){state.applyPreset(entry.values.style);state.update({params:entry.values.params});state.updateSurface({darkness:entry.values.darkness,widthPercent:0,chipDensity:0});}
+      get<HTMLInputElement>(`#${group}-name`).value=entry.name;
+      message.textContent=`「${entry.name}」を適用しました。`;
+    }));
+    get(`#${group}-delete`).addEventListener('click',()=>edit(()=>{
+      const value=get<HTMLSelectElement>(`#${group}-saved`).value;if(value==='')return;
+      try {const next=saved.filter(p=>p.group!==group||p.name!==value);localStorage.setItem(PRESET_STORAGE_KEY,JSON.stringify(next));saved=next;message.textContent='保存済みプリセットを削除しました。';}
+      catch {message.textContent='削除できません。ブラウザの保存設定をご確認ください。';}
+    }));
+  }
+  get('#shard-preset').addEventListener('change',()=>edit(()=>{
+    const value=get<HTMLSelectElement>('#shard-preset').value;
+    state?.shards.update(value==='default'?APPLICATION_SHARD_DEFAULTS:value==='subtle'?{displacement:30,rotation:20,reflection:30,gap:0}:{displacement:0,rotation:0,reflection:0,gap:0});
+  }));
   get('#material-enabled').addEventListener('change',()=>edit(()=>state?.glass.update({enabled:get<HTMLInputElement>('#material-enabled').checked})));
   get('#material-preset').addEventListener('change',()=>edit(()=>state?.glass.applyPreset(get<HTMLSelectElement>('#material-preset').value as GlassMaterialPreset)));
   get('#material-reset').addEventListener('click',()=>edit(()=>state?.glass.applyPreset('cinematic')));
