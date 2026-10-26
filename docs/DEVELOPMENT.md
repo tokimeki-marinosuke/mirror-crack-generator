@@ -172,3 +172,8 @@ Vite の `base` は `/mirror-crack-generator/` に設定しています。
 
 現在の通常UIは承認済み初期値をつまみ中央50に置く。表示値と位置を区別し、操作テストは
 [中央基準の調整](CENTERED_CONTROLS.md) のコマンドを使う。
+
+全設定の初期化は左パネルの「すべての調整を初期値に戻す」。画像、点のID/現在座標/選択を保持し、
+材質・映り・全点の調整とシードを復帰する。`resetApplicationSettings` と `EditorState.resetPoints` を使い、
+待機中のスライダー入力は既存の編集キューで処理してから初期化する。
+Playwrightでの検証は `node tests/reset-settings-ui.cjs`（必要ならNODE_PATHを指定）。

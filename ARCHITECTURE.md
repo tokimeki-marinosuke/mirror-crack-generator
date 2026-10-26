@@ -195,3 +195,10 @@ type Impact = { id: string; origin: Point; seed: number; preset: StylePreset; pa
 `state/controlScale.ts` が承認済み初期値を位置50にする順逆変換を持つ。表示は実効値、モデルは物理値を保持する。
 通常アプリのwide範囲だけ材質・映りの100超を許可し、互換APIは従来の検証を維持する。
 初期描画は不変。詳細と上限は [中央基準の調整](docs/CENTERED_CONTROLS.md) を参照。
+
+## 全設定のリセット
+
+`EditorState.resetPoints` は全点の置換データを先に生成し、ID・現在座標・選択・次のIDを保持したまま
+初期基準とシード1へ戻す。`resetApplicationSettings` が材質シネマティックと映り初期値を合わせて復帰する。
+UIは既存の編集キューをフラッシュしてから初期化し、プレビューを再描画する。画像オブジェクトは置換しない。
+画像なし・読み込み中・保存中はリセットボタンを無効化する。効果0の既存操作は維持する。

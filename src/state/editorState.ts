@@ -124,6 +124,18 @@ export class EditorState {
     const fracture = changed ? generateFractureSurface(pattern, this.size, surface.widthPercent, surface.chipDensity) : current.fracture;
     this.items = this.items.map(item => item.id === current.id ? { ...current, params, pattern, surface, fracture, impactStrength: value } : item);
   }
+  /** Restore appearance defaults without renumbering, moving or removing impacts. */
+  resetPoints(): void {
+    // Prepare the entire replacement first so a generation failure cannot leave a partial reset.
+    const restored = this.items.map(impact => {
+      const params = { ...this.realisticPreset }, surface = { ...DEFAULT_SURFACE_SETTINGS };
+      const pattern = generateCracks(this.size, impact.origin, 1, params);
+      return { id: impact.id, origin: { ...impact.origin }, seed: 1, preset: 'realistic' as const,
+        params, surface, pattern, fracture: generateFractureSurface(pattern, this.size, surface.widthPercent, surface.chipDensity),
+        impactStrength: 50, overrides: {}, surfaceOverrides: {} };
+    });
+    this.items = restored;
+  }
   regenerate(): void {
     if (this.active) this.update({ seed: ((this.active.seed >>> 0) + 1) >>> 0 });
   }

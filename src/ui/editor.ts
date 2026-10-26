@@ -1,5 +1,5 @@
 import { MATERIAL_SCALES, SHARD_SCALES, POINT_SCALES, DARKNESS_SCALE, controlPosition, controlValue, type ControlScale } from '../state/controlScale';
-import { createApplicationEditor } from '../state/applicationDefaults';
+import { createApplicationEditor, resetApplicationSettings } from '../state/applicationDefaults';
 import { effectiveImpactStrength, displayImpactStrength } from '../core/effectRanges';
 import { GLASS_MATERIAL_PRESETS, isGlassMaterialActive, type GlassMaterialPreset } from '../core/glassMaterial';
 import { DEFAULT_SHARD_IMAGE_SETTINGS } from '../state/shardImageState';
@@ -60,6 +60,9 @@ export function mountEditor(root: HTMLElement): void {
       <button type="button" id="delete-impact" disabled>選択した衝撃点を削除</button>
       <p class="hint">追加モードで画像をクリックすると追加。マーカーをクリックすると選択、ドラッグすると移動できます。移動モードではクリック先へ選択点を移します。</p>
       <p class="hint">画像はブラウザ内で処理され、サーバーへ送信されません。</p>
+      <hr><h2>設定のリセット</h2>
+      <button type="button" id="reset-settings" disabled>すべての調整を初期値に戻す</button>
+      <p class="hint">材質・映り・全衝撃点を基準の設定に戻します。画像・衝撃点の位置・選択は保持し、シードは1へ戻します。</p>
       <hr><h2>PNG出力</h2>
       <button type="button" id="export-composite" disabled>合成PNGを保存</button>
       <button type="button" id="export-cracks" disabled>亀裂のみPNGを保存</button>
@@ -119,6 +122,7 @@ export function mountEditor(root: HTMLElement): void {
   let loading = false;
   let exporting = false;
   function syncExportControls(): void {
+    get<HTMLButtonElement>('#reset-settings').disabled = !image || loading || exporting;
     get<HTMLButtonElement>('#export-composite').disabled = !image || loading || exporting;
     get<HTMLButtonElement>('#export-cracks').disabled = !image || loading || exporting;
   }
@@ -277,6 +281,7 @@ export function mountEditor(root: HTMLElement): void {
     button.addEventListener('click', () => { mode = button.dataset.mode as Mode; refresh(); });
   }
   list.addEventListener('change', () => edit(() => state?.select(Number(list.value))));
+  get('#reset-settings').addEventListener('click',()=>edit(()=>{if(state)resetApplicationSettings(state);}));
   get('#delete-impact').addEventListener('click', () => edit(() => {
     state?.remove();
     if (!state?.active) mode = 'add';

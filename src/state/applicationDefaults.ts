@@ -17,3 +17,10 @@ export function createApplicationEditor(size: Size): EditorState {
   state.shards.update(APPLICATION_SHARD_DEFAULTS);
   return state;
 }
+
+/** Reset the app's look while retaining the image state, impact identities and selection. */
+export function resetApplicationSettings(state: EditorState): void {
+  state.resetPoints();
+  state.glass.applyPreset('cinematic');
+  state.shards.update(APPLICATION_SHARD_DEFAULTS);
+}
