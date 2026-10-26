@@ -52,7 +52,7 @@ it('個別指定の不正値をマクロで隠さず、入力オブジェクト�
   resolveFractureSettings(base, { impactStrength: 100, overrides });
   expect(base).toEqual(PRESETS.realistic);
   expect(overrides).toEqual({ centerDensity: 0, lineWidth: 2 });
-  expect(() => resolveFractureSettings(base, { impactStrength: 100, overrides: { lengthPercent: 226 } })).toThrow();
+  expect(() => resolveFractureSettings(base, { impactStrength: 100, overrides: { lengthPercent: 301 } })).toThrow();
   expect(() => resolveFractureSettings(base, { overrides: { radialCount: 4.5 } })).toThrow();
 });
 

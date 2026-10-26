@@ -189,3 +189,9 @@ type Impact = { id: string; origin: Point; seed: number; preset: StylePreset; pa
 `state/applicationDefaults.ts` が通常UIのRealistic基準と映りの初期値をまとめる。表示上の強度を実効値へ変換し、
 新画像・追加点・Realisticの再選択で同じ基準を使う。標準マクロ50は基準を維持し、旧上限を超える基準からも強められる。
 低レベルEditorStateの既定と他の割れ方プリセットは互換性を維持する。初期値と公開準備は [リリース計画](docs/RELEASE_PLAN.md) を参照。
+
+## つまみ位置とモデル値の校正
+
+`state/controlScale.ts` が承認済み初期値を位置50にする順逆変換を持つ。表示は実効値、モデルは物理値を保持する。
+通常アプリのwide範囲だけ材質・映りの100超を許可し、互換APIは従来の検証を維持する。
+初期描画は不変。詳細と上限は [中央基準の調整](docs/CENTERED_CONTROLS.md) を参照。

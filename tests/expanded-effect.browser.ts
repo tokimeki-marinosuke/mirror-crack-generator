@@ -1,3 +1,4 @@
+import { createApplicationEditor, APPLICATION_IMPACT_DEFAULTS, APPLICATION_SHARD_DEFAULTS } from '../src/state/applicationDefaults';
 import { EditorState } from '../src/state/editorState';
 import { ShardImageState } from '../src/state/shardImageState';
 import { exportPng } from '../src/image/exportPng';
@@ -14,5 +15,10 @@ export async function verifyExpandedEffects(){
  const expected=await pixels(reference,'composite'),actual=await pixels(baseline,'composite');check(expected===actual,'new shard65 PNG must match legacy100 PNG');
  const cracks=await pixels(baseline,'cracks');state.shards.update({displacement:100,rotation:100,reflection:100,gap:100});const strong=state.shards.resolve(state.impacts)!;
  check(strong.extraction===baseline.extraction,'reuse partition');check(await pixels(strong,'composite')!==actual,'100 strengthens composite');check(await pixels(strong,'cracks')===cracks,'image controls leave crack PNG unchanged');
- return 'Expanded image effects: 65/legacy100 exact real PNG, stronger100, original resolution, cached partition, unchanged transparent crack PNG passed.';
+ const centered=createApplicationEditor(size),previous=new EditorState(size,APPLICATION_IMPACT_DEFAULTS);
+ centered.add({x:360,y:220});previous.add({x:360,y:220});previous.shards.update(APPLICATION_SHARD_DEFAULTS);
+ const appPng=async(editor:EditorState,mode:'composite'|'cracks')=>{const composition=editor.shards.resolve(editor.impacts);const bitmap=await createImageBitmap(await exportPng(image,editor.impacts,mode,composition,editor.glass.prepare(editor.impacts,composition)));const c=document.createElement('canvas');c.width=bitmap.width;c.height=bitmap.height;c.getContext('2d')!.drawImage(bitmap,0,0);bitmap.close();const data=c.toDataURL();c.width=0;return data;};
+ for(const mode of ['composite','cracks'] as const)check(await appPng(centered,mode)===await appPng(previous,mode),'centered baseline must match previous approved defaults: '+mode);
+ const defaultImage=await appPng(centered,'composite');centered.shards.update({displacement:200,rotation:200,reflection:200});check(await appPng(centered,'composite')!==defaultImage,'upper half exceeds the previous 100% image effects');
+ return 'Centered baseline: both PNGs match approved defaults exactly; new upper range exceeds previous maximum. Legacy calibration, resolution, partition and crack-only compatibility passed.';
 }

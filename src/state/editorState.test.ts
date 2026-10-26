@@ -89,7 +89,7 @@ describe('衝撃点ごとの編集状態', () => {
   it('不正な編集で現在の状態を壊さない', () => {
     const state = create();
     const first = state.add({ x: 200, y: 200 });
-    for (const patch of [{ seed: 1.5 }, { params: { radialCount: 36 } },
+    for (const patch of [{ seed: 1.5 }, { params: { radialCount: 46 } },
       { params: { lineWidth: 0 } }, { params: { opacity: 101 } }, { params: { highlight: 101 } }, { origin: { x: -1, y: 0 } }]) {
       expect(() => state.update(patch)).toThrow();
       expect(state.active).toBe(first);

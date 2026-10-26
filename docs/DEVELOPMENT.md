@@ -169,3 +169,6 @@ Vite の `base` は `/mirror-crack-generator/` に設定しています。
 通常UIの初期値とRealisticの復帰値は `state/applicationDefaults.ts` に集約した。
 正式リリースに向けた確認・タグとPagesの関係は [リリース準備](RELEASE_PLAN.md) を参照。
 `npm test` は並列競合を避けるため1ワーカーで実行する。
+
+現在の通常UIは承認済み初期値をつまみ中央50に置く。表示値と位置を区別し、操作テストは
+[中央基準の調整](CENTERED_CONTROLS.md) のコマンドを使う。

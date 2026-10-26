@@ -16,9 +16,9 @@ export const DEFAULT_GLASS_MATERIAL: GlassMaterialSettings = Object.freeze({
   enabled: false, thickness: 0, edgeReflection: 0, interiorReflection: 0, microDetail: 0, reflectionWidth: 65, lightDirection: 225,
 });
 export type GlassLight = Readonly<{ angle: number; screenDirection: Readonly<Point>; direction: Vector3 }>;
-export function resolveGlassMaterial(patch: Partial<GlassMaterialSettings> = {}): GlassMaterialSettings {
+export function resolveGlassMaterial(patch: Partial<GlassMaterialSettings> = {}, extended = false): GlassMaterialSettings {
   const result = { ...DEFAULT_GLASS_MATERIAL, ...patch };
-  if (typeof result.enabled !== 'boolean' || ![result.thickness, result.edgeReflection, result.interiorReflection, result.microDetail, result.reflectionWidth!].every(v => Number.isFinite(v) && v >= 0 && v <= 100) || !Number.isFinite(result.lightDirection)) throw new Error('材質設定が不正です。');
+  if (typeof result.enabled !== 'boolean' || ![result.thickness, result.edgeReflection, result.interiorReflection, result.microDetail, result.reflectionWidth!].every(v => Number.isFinite(v) && v >= 0 && v <= (extended ? 200 : 100)) || !Number.isFinite(result.lightDirection)) throw new Error('材質設定が不正です。');
   result.lightDirection = ((result.lightDirection % 360) + 360) % 360;
   return Object.freeze(result);
 }

@@ -11,11 +11,7 @@ it('65で旧最大、100でさらに強く、UI変換は連続で可逆',()=>{
  for(let value=0;value<=100;value++){expect(displayPercent(effectivePercent(value))).toBeCloseTo(value);expect(displayImpactStrength(effectiveImpactStrength(value))).toBeCloseTo(value);}
  for(const value of [NaN,Infinity,-1,101]){expect(()=>effectivePercent(value)).toThrow();expect(()=>effectiveImpactStrength(value)).toThrow();}
 });
-it('数・長さ・線幅の旧上限がスライダー位置約65%になる',()=>{
- expect((24-4)/(EXPANDED_LIMITS.radialCount-4)).toBeCloseTo(.65,1);
- expect((150-10)/(EXPANDED_LIMITS.lengthPercent-10)).toBeCloseTo(.65,1);
- expect((6-.5)/(EXPANDED_LIMITS.lineWidth-.5)).toBeCloseTo(.65,1);
-});
+it('新上限が選択された初期値より大きい',()=>{expect(EXPANDED_LIMITS.radialCount).toBeGreaterThan(29);expect(EXPANDED_LIMITS.lengthPercent).toBeGreaterThan(192);expect(EXPANDED_LIMITS.lineWidth).toBeGreaterThan(1);});
 it('映り4項目の65は旧100と完全一致し、100は分割を維持したまま増幅',()=>{
  const result=extractShardRegions(size,[{id:'a',start:{x:400,y:0},end:{x:400,y:500}}]);if(!result.ok)throw new Error(result.message);
  const graph=result.graph,before=structuredClone(graph);
@@ -36,7 +32,7 @@ it('製品の映りは拡張範囲だが、強度変更で破片を再抽出し�
 });
 it('新しい上限でも有限・線分上限以内で、中心密度0の保護を維持',()=>{
  for(const point of [origin,{x:0,y:0}]){
-  const params={...DEFAULT_CRACK_PARAMS,radialCount:35,lengthPercent:225,complexity:effectivePercent(100),concentricDensity:effectivePercent(100),centerDensity:0};
+  const params={...DEFAULT_CRACK_PARAMS,radialCount:EXPANDED_LIMITS.radialCount,lengthPercent:EXPANDED_LIMITS.lengthPercent,complexity:EXPANDED_LIMITS.complexity,concentricDensity:EXPANDED_LIMITS.concentricDensity,centerDensity:0};
   const pattern=generateCracks(size,point,42,params);expect(pattern.segments.length).toBeLessThanOrEqual(MAX_SEGMENTS);
   expect(pattern.segments.every(s=>[s.start.x,s.start.y,s.end.x,s.end.y].every(Number.isFinite))).toBe(true);
   expect(pattern.protectedRadius).toBeGreaterThan(0);expect(pattern.segments.every(s=>s.strength===undefined)).toBe(true);

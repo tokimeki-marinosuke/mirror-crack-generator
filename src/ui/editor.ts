@@ -1,5 +1,6 @@
+import { MATERIAL_SCALES, SHARD_SCALES, POINT_SCALES, DARKNESS_SCALE, controlPosition, controlValue, type ControlScale } from '../state/controlScale';
 import { createApplicationEditor } from '../state/applicationDefaults';
-import { EXPANDED_LIMITS, effectivePercent, displayPercent, effectiveImpactStrength, displayImpactStrength } from '../core/effectRanges';
+import { effectiveImpactStrength, displayImpactStrength } from '../core/effectRanges';
 import { GLASS_MATERIAL_PRESETS, isGlassMaterialActive, type GlassMaterialPreset } from '../core/glassMaterial';
 import { DEFAULT_SHARD_IMAGE_SETTINGS } from '../state/shardImageState';
 import type { SurfaceSettings } from '../state/fractureSettings';
@@ -10,14 +11,14 @@ import { renderPreview } from '../render/preview';
 import { EditorState, EFFECT_PRESETS, type EffectPreset, type ImpactParams, type StylePreset } from '../state/editorState';
 
 const sliders = [
-  { key: 'radialCount', label: '主要亀裂数', min: 4, max: EXPANDED_LIMITS.radialCount, step: 1, unit: '本' },
-  { key: 'lengthPercent', label: '長さ（画像短辺基準）', min: 10, max: EXPANDED_LIMITS.lengthPercent, step: 1, unit: '%' },
-  { key: 'complexity', label: '不規則性・分岐', min: 0, max: 100, step: 1, unit: '%' },
-  { key: 'concentricDensity', label: '蜘蛛の巣の密度', min: 0, max: 100, step: 1, unit: '%' },
-  { key: 'centerRadius', label: '中心領域の半径（基準長比）', min: 0, max: 80, step: 1, unit: '%' },
-  { key: 'centerDensity', label: '中心の亀裂密度（0で中心を残す）', min: 0, max: 100, step: 1, unit: '%' },
-  { key: 'lineWidth', label: '黒い亀裂の太さ（元画像基準）', min: 0.5, max: EXPANDED_LIMITS.lineWidth, step: 0.1, unit: 'px' },
-  { key: 'opacity', label: '不透明度', min: 0, max: 100, step: 1, unit: '%' },
+  { key: 'radialCount', label: '主要亀裂数', unit: '本' },
+  { key: 'lengthPercent', label: '長さ（画像短辺基準）', unit: '%' },
+  { key: 'complexity', label: '不規則性・分岐', unit: '%' },
+  { key: 'concentricDensity', label: '蜘蛛の巣の密度', unit: '%' },
+  { key: 'centerRadius', label: '中心領域の半径（基準長比）', unit: '%' },
+  { key: 'centerDensity', label: '中心の亀裂密度（0で中心を残す）', unit: '%' },
+  { key: 'lineWidth', label: '黒い亀裂の太さ（元画像基準）', unit: 'px' },
+  { key: 'opacity', label: '不透明度', unit: '%' },
 ] as const;
 
 const surfaceSliders = [
@@ -73,12 +74,12 @@ export function mountEditor(root: HTMLElement): void {
       <label class="control"><span>材質効果を有効にする</span><input id="material-enabled" type="checkbox"></label>
       <label class="control">材質プリセット<select id="material-preset">${Object.entries(GLASS_MATERIAL_PRESETS).map(([id,p])=>`<option value="${id}">${p.label}</option>`).join('')}<option value="custom" disabled>カスタム</option></select></label>
       <p class="hint">画像全体に適用します。シネマティックは見栄えと視認性のバランス型、リアルは控えめ、ドラマティックは強調型。選択後も自由に調整できます。</p>
-      ${materialSliders.map(s=>`<label class="control" for="material-${s.key}">${s.label}<output id="material-${s.key}-value"></output></label><input id="material-${s.key}" type="range" min="0" max="${s.max}" step="1">`).join('')}
+      ${materialSliders.map(s=>`<label class="control" for="material-${s.key}">${s.label}<output id="material-${s.key}-value"></output></label><input id="material-${s.key}" type="range" min="0" max="${s.max}" step="0.1">`).join('')}
       <button type="button" id="material-reset">材質効果を0に戻す</button>
-      <p class="hint">厚み・反射幅・黒い亀裂の太さは独立です。65%付近が従来の材質最大効果の目安です。内部反射は合成PNGだけに適用し、保護領域と重なる破片全体を維持します。</p>
+      <p class="hint">厚み・反射幅・黒い亀裂の太さは独立です。つまみの中央50%が今回の初期の見た目です。横の数値は実際の設定値です。右側でさらに強められます。内部反射は合成PNGだけに適用し、保護領域と重なる破片全体を維持します。</p>
       </fieldset><p id="material-status" role="status"></p><hr><h2>画像全体の映り</h2>
       <fieldset id="shard-settings" disabled><legend class="sr-only">鏡の破片の画像変形</legend>
-      <p class="hint">全ての衝撃点で区切られた破片に適用します。4項目とも65%が従来の最大効果です。100%ではさらに強くできます。</p>
+      <p class="hint">全ての衝撃点で区切られた破片に適用します。ずれ・回転・明暗差は中央50%が初期の見た目です。横の数値は実効値です。隙間0は左端のままです。</p>
       <button type="button" id="shard-demo">映りの変化を試す</button>
       ${shardSliders.map(s=>`<label class="control" for="shard-${s.key}">${s.label}<output id="shard-${s.key}-value">0%</output></label><input id="shard-${s.key}" type="range" min="0" max="100" step="1" value="0">`).join('')}
       <button type="button" id="shard-reset">映りの変化を0に戻す</button>
@@ -89,11 +90,11 @@ export function mountEditor(root: HTMLElement): void {
       <p class="hint">切り替えると調整値を初期化します。位置・シードは保持します。</p>
       <label class="control" for="impact-strength">衝撃の強さ<output id="impact-strength-value"></output></label>
       <input id="impact-strength" type="range" min="0" max="100" step="1" value="50">
-      <p class="hint">長さ・分岐をまとめて調整。個別に変更した項目を優先します。プリセットの選び直しで個別調整を解除します。中心保護・黒い亀裂の太さは保持します。50%は標準、65%が従来の最大です。</p>
+      <p class="hint">長さ・分岐をまとめて調整。個別に変更した項目を優先します。プリセットの選び直しで個別調整を解除します。中心保護・黒い亀裂の太さは保持します。50%は今回の標準です。右側でさらに強められます。</p>
       ${surfaceSliders.map(s => `<label class="control" for="surface-${s.key}">${s.label}<output id="surface-${s.key}-value"></output></label><input id="surface-${s.key}" type="range" min="0" max="100" step="1">`).join('')}
-      <p class="hint">不規則性・蜘蛛の巣は65%が従来最大。数・長さ・黒線幅もスライダー位置約65%が旧上限です。中心保護・不透明度・黒線の濃さは実際の割合を維持します。黒線幅で経路や欠けの数は変わりません。反射幅は画像全体の「ガラス材質」で調整します。破片内の画像のずれ・回転は「画像全体の映り」で調整できます。</p>
+      <p class="hint">各つまみの中央50%が初期値です。表示は実際の本数・長さ・割合で、不透明度100%や中心密度0の意味は変わりません。黒線幅で経路や欠けの数は変わりません。反射幅は画像全体の「ガラス材質」で調整します。破片内の画像のずれ・回転は「画像全体の映り」で調整できます。</p>
       ${sliders.map(s => `<label class="control" for="${s.key}">${s.label}<output id="${s.key}-value"></output></label>
-      <input type="range" id="${s.key}" min="${s.min}" max="${s.max}" step="${s.step}">`).join('')}
+      <input type="range" id="${s.key}" min="0" max="100" step="0.1">`).join('')}
       <label class="control" for="seed">シード（整数）</label>
       <input id="seed" type="number" step="1" min="-9007199254740991" max="9007199254740991" value="1">
       <button type="button" id="regenerate">再生成</button>
@@ -120,6 +121,12 @@ export function mountEditor(root: HTMLElement): void {
   function syncExportControls(): void {
     get<HTMLButtonElement>('#export-composite').disabled = !image || loading || exporting;
     get<HTMLButtonElement>('#export-cracks').disabled = !image || loading || exporting;
+  }
+  const actualText=(value:number)=>String(Number(value.toFixed(2)));
+  function syncControl(id:string, value:number, calibration:ControlScale, text:string):void {
+    const control=get<HTMLInputElement>(`#${id}`);control.value=String(controlPosition(value,calibration));
+    control.dataset.effective=String(value);control.setAttribute('aria-valuetext',`${text}（調整位置${Number(control.value)}%）`);
+    get<HTMLOutputElement>(`#${id}-value`).value=text;
   }
   let drag: { pointerId: number; start: Point; origin: Point; moved: boolean } | null = null;
 
@@ -160,14 +167,13 @@ export function mountEditor(root: HTMLElement): void {
     get<HTMLSelectElement>('#material-preset').value=state?.glass.preset??'custom';
     for(const slider of materialSliders){
       const value=state?.glass.settings[slider.key]??0;
-      get<HTMLInputElement>(`#material-${slider.key}`).value=String(value);
-      get<HTMLOutputElement>(`#material-${slider.key}-value`).value=`${value}${slider.unit}`;
+      if(slider.key==='lightDirection'){get<HTMLInputElement>('#material-lightDirection').value=String(value);get<HTMLOutputElement>('#material-lightDirection-value').value=`${value}°`;}
+      else syncControl(`material-${slider.key}`,value,MATERIAL_SCALES[slider.key],`${actualText(value)}%`);
     }
     get<HTMLFieldSetElement>('#shard-settings').disabled=!image||!state?.impacts.length;
     for(const slider of shardSliders){
       const value=state?.shards.settings[slider.key]??0;
-      get<HTMLInputElement>(`#shard-${slider.key}`).value=String(value);
-      get<HTMLOutputElement>(`#shard-${slider.key}-value`).value=`${value}%`;
+      syncControl(`shard-${slider.key}`,value,SHARD_SCALES[slider.key],`${actualText(value)}%`);
     }
     get<HTMLButtonElement>('#delete-impact').disabled = !active;
     for (const button of root.querySelectorAll<HTMLButtonElement>('[data-mode]')) {
@@ -182,16 +188,14 @@ export function mountEditor(root: HTMLElement): void {
       get<HTMLOutputElement>('#impact-strength-value').value = `${Math.round(displayImpactStrength(active.impactStrength ?? 50))}%`;
       for (const slider of surfaceSliders) {
         const value = active.surface?.[slider.key] ?? 0;
-        get<HTMLInputElement>(`#surface-${slider.key}`).value = String(value);
-        get<HTMLOutputElement>(`#surface-${slider.key}-value`).value = `${value}%`;
+        syncControl(`surface-${slider.key}`,value,DARKNESS_SCALE,`${actualText(value)}%`);
       }
       seed.value = String(active.seed);
       seed.setCustomValidity('');
       for (const slider of sliders) {
         const raw=active.params[slider.key];
-        const value=slider.key==='complexity'||slider.key==='concentricDensity'?Math.round(displayPercent(raw)):raw;
-        get<HTMLInputElement>(`#${slider.key}`).value = String(value);
-        get<HTMLOutputElement>(`#${slider.key}-value`).value = `${value} ${slider.unit}`;
+        const value=slider.key==='complexity'||slider.key==='concentricDensity'?raw*.65:raw;
+        syncControl(slider.key,raw,POINT_SCALES[slider.key],`${actualText(value)} ${slider.unit}`);
       }
       status.textContent = `衝撃点 ${active.id} / ${state!.impacts.length}点 · シード ${active.seed} · ${active.pattern.segments.length}線分`;
     } else status.textContent = image ? '追加モードで画像上をクリックしてください。' : '画像を読み込むとプレビューが表示されます。';
@@ -282,14 +286,23 @@ export function mountEditor(root: HTMLElement): void {
     const control = get<HTMLInputElement>(`#${slider.key}`);
     control.addEventListener('input', () => {
       const value = control.valueAsNumber;
-      queue(slider.key, () => state?.update({ params: { [slider.key]: slider.key==='complexity'||slider.key==='concentricDensity'?effectivePercent(value):value } }));
+      queue(slider.key, () => state?.update({ params: { [slider.key]: controlValue(value,POINT_SCALES[slider.key]) } }));
     });
   }
+  // Integer counts use real count increments; normalized substeps would otherwise round back forever.
+  get<HTMLInputElement>('#radialCount').addEventListener('keydown',event=>{
+    const key=event.key;if(!state?.active||!['ArrowRight','ArrowUp','ArrowLeft','ArrowDown','PageUp','PageDown','Home','End'].includes(key))return;
+    event.preventDefault();edit(()=>{
+      const current=state!.active!.params.radialCount;
+      const value=key==='Home'?POINT_SCALES.radialCount.min:key==='End'?POINT_SCALES.radialCount.max:current+(['ArrowLeft','ArrowDown','PageDown'].includes(key)?-1:1)*(key.startsWith('Page')?5:1);
+      state!.update({params:{radialCount:Math.max(POINT_SCALES.radialCount.min,Math.min(POINT_SCALES.radialCount.max,value))}});
+    });
+  });
   for (const slider of surfaceSliders) {
     const control = get<HTMLInputElement>(`#surface-${slider.key}`);
     control.addEventListener('input', () => {
       const value = control.valueAsNumber;
-      queue(`surface-${slider.key}`, () => state?.updateSurface({ [slider.key]: value } as Partial<SurfaceSettings>));
+      queue(`surface-${slider.key}`, () => state?.updateSurface({ [slider.key]: controlValue(value,DARKNESS_SCALE) } as Partial<SurfaceSettings>));
     });
   }
   get<HTMLInputElement>('#impact-strength').addEventListener('input', event => {
@@ -298,11 +311,11 @@ export function mountEditor(root: HTMLElement): void {
   });
   for(const slider of shardSliders){
     const control=get<HTMLInputElement>(`#shard-${slider.key}`);
-    control.addEventListener('input',()=>{const value=control.valueAsNumber;queue(`shard-${slider.key}`,()=>state?.shards.update({[slider.key]:value}));});
+    control.addEventListener('input',()=>{const value=control.valueAsNumber;queue(`shard-${slider.key}`,()=>state?.shards.update({[slider.key]:controlValue(value,SHARD_SCALES[slider.key])}));});
   }
   for(const slider of materialSliders){
     const control=get<HTMLInputElement>(`#material-${slider.key}`);
-    control.addEventListener('input',()=>{const value=control.valueAsNumber;queue(`material-${slider.key}`,()=>state?.glass.update({[slider.key]:value}));});
+    control.addEventListener('input',()=>{const value=control.valueAsNumber;queue(`material-${slider.key}`,()=>state?.glass.update({[slider.key]:slider.key==='lightDirection'?value:controlValue(value,MATERIAL_SCALES[slider.key])}));});
   }
   get('#material-enabled').addEventListener('change',()=>edit(()=>state?.glass.update({enabled:get<HTMLInputElement>('#material-enabled').checked})));
   get('#material-preset').addEventListener('change',()=>edit(()=>state?.glass.applyPreset(get<HTMLSelectElement>('#material-preset').value as GlassMaterialPreset)));

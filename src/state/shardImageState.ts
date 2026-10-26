@@ -12,12 +12,12 @@ export class ShardImageState {
   private extraction?: ShardExtraction;
   private composition?: ShardComposition;
   private extractionCount = 0;
-  constructor(private readonly size: Size, private readonly limits: Partial<ShardLimits> = {}, readonly range: 'legacy' | 'expanded' = 'legacy') {}
+  constructor(private readonly size: Size, private readonly limits: Partial<ShardLimits> = {}, readonly range: 'legacy' | 'expanded' | 'wide' = 'legacy') {}
   get settings(): Readonly<ShardImageSettings> {return this.values;}
   get extractions(): number {return this.extractionCount;}
   update(patch: Partial<ShardImageSettings>): void {
     const next={...this.values,...patch};
-    if(!Object.values(next).every(v=>Number.isFinite(v)&&v>=0&&v<=100))throw new Error('映りの設定は0〜100%で指定してください。');
+    if(!Object.values(next).every(v=>Number.isFinite(v)&&v>=0&&v<=(this.range==='wide'?200:100)))throw new Error('映りの設定が調整範囲外です。');
     if((Object.keys(next) as (keyof ShardImageSettings)[]).every(k=>next[k]===this.values[k]))return;
     this.values=Object.freeze(next);this.composition=undefined;
   }

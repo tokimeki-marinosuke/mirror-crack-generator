@@ -13,7 +13,7 @@ export const APPLICATION_SHARD_DEFAULTS: Readonly<ShardImageSettings> = Object.f
 });
 /** A new image gets these values. Low-level EditorState and zero-reset APIs stay compatible. */
 export function createApplicationEditor(size: Size): EditorState {
-  const state = new EditorState(size, APPLICATION_IMPACT_DEFAULTS);
+  const state = new EditorState(size, APPLICATION_IMPACT_DEFAULTS, true);
   state.shards.update(APPLICATION_SHARD_DEFAULTS);
   return state;
 }

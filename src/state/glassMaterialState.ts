@@ -20,7 +20,7 @@ export class GlassMaterialState {
   private interiorGraph?: ShardGraph;
   private interiorResult?: GlassInteriorResult;
   private interiorSeed?: number;
-  constructor(private readonly size: Size, readonly appearance: 'legacy' | 'clean' = 'legacy') { this.interiorSource = new ShardImageState(size); }
+  constructor(private readonly size: Size, readonly appearance: 'legacy' | 'clean' = 'legacy', private readonly extended = false) { this.interiorSource = new ShardImageState(size); }
   get preset(): GlassMaterialPreset | undefined { return this.selectedPreset; }
   applyPreset(id: GlassMaterialPreset): void {
     if (!Object.hasOwn(GLASS_MATERIAL_PRESETS, id)) throw new Error('材質プリセットが不正です。');
@@ -31,7 +31,7 @@ export class GlassMaterialState {
   get light(): GlassLight { return this.sharedLight; }
   get preparations(): number { return this.builds; }
   update(patch: Partial<GlassMaterialSettings>): void {
-    const next = resolveGlassMaterial({ ...this.values, ...patch });
+    const next = resolveGlassMaterial({ ...this.values, ...patch }, this.extended);
     if (next.lightDirection !== this.values.lightDirection) this.sharedLight = createGlassLight(next.lightDirection);
     this.values = next; this.selectedPreset = undefined;
   }

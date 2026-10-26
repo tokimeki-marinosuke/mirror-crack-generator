@@ -18,12 +18,12 @@ function value(seed: number, id: string, channel: number): number {
 }
 /** 分割を変更せず、経路の乱数も消費せず、変形量だけを計算する。 */
 export function createShardTransformPlan(graph: ShardGraph, size: Size, seed: number,
-  settings: ShardTransformSettings, protectedCores: readonly CircleRegion[] = [], range: 'legacy' | 'expanded' = 'legacy'): ShardTransformPlan {
+  settings: ShardTransformSettings, protectedCores: readonly CircleRegion[] = [], range: 'legacy' | 'expanded' | 'wide' = 'legacy'): ShardTransformPlan {
   if(!Number.isSafeInteger(seed)||![size.width,size.height].every(n=>Number.isSafeInteger(n)&&n>0&&n<=8192)||
-    ![settings.displacement,settings.rotation,settings.reflection??0,settings.gap??0].every(n=>Number.isFinite(n)&&n>=0&&n<=100)||
+    ![settings.displacement,settings.rotation,settings.reflection??0,settings.gap??0].every(n=>Number.isFinite(n)&&n>=0&&n<=(range==='wide'?200:100))||
     !protectedCores.every(c=>Number.isFinite(c.origin.x)&&Number.isFinite(c.origin.y)&&Number.isFinite(c.radius)&&c.radius>=0)) throw new Error('破片変形の入力が不正です。');
-  if (range !== 'legacy' && range !== 'expanded') throw new Error('映りの強度範囲が不正です。');
-  const amount=(v:number)=>range==='expanded'?effectivePercent(v):v;
+  if (range !== 'legacy' && range !== 'expanded' && range !== 'wide') throw new Error('映りの強度範囲が不正です。');
+  const amount=(v:number)=>range==='wide'?v/.65:range==='expanded'?effectivePercent(v):v;
   const displacement=amount(settings.displacement), rotation=amount(settings.rotation), reflection=amount(settings.reflection??0), gap=amount(settings.gap??0);
   const ids=new Set<string>();
   for(const r of graph.regions) {
