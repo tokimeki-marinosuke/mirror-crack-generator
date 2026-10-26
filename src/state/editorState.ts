@@ -44,7 +44,7 @@ export class EditorState {
   private nextId = 1;
   readonly shards: ShardImageState;
   readonly glass: GlassMaterialState;
-  constructor(readonly size: Size) { this.shards = new ShardImageState(size, {}, 'expanded'); this.glass = new GlassMaterialState(size, 'clean'); this.glass.applyPreset('cinematic'); }
+  constructor(readonly size: Size, private readonly realisticPreset: Readonly<ImpactParams> = PRESETS.realistic) { this.shards = new ShardImageState(size, {}, 'expanded'); this.glass = new GlassMaterialState(size, 'clean'); this.glass.applyPreset('cinematic'); }
   get impacts(): readonly Impact[] { return this.items; }
   get selectedId(): number | null { return this.selected; }
   get active(): Impact | undefined { return this.items.find(impact => impact.id === this.selected); }
@@ -54,7 +54,7 @@ export class EditorState {
   }
   add(origin: Point): Impact {
     const seed = 1;
-    const params = { ...PRESETS.realistic };
+    const params = { ...this.realisticPreset };
     const impact: Impact = { id: this.nextId, origin: { ...origin }, seed, preset: 'realistic', params,
       pattern: generateCracks(this.size, origin, seed, params) };
     impact.surface = { ...DEFAULT_SURFACE_SETTINGS };
@@ -67,7 +67,7 @@ export class EditorState {
   update(patch: { origin?: Point; seed?: number; preset?: StylePreset; params?: Partial<ImpactParams> }): void {
     const current = this.active;
     if (!current) return;
-    const params = { ...(patch.preset ? PRESETS[patch.preset] : current.params), ...patch.params };
+    const params = { ...(patch.preset ? (patch.preset === 'realistic' ? this.realisticPreset : PRESETS[patch.preset]) : current.params), ...patch.params };
     if (!Number.isFinite(params.lineWidth) || params.lineWidth < 0.5 || params.lineWidth > EXPANDED_LIMITS.lineWidth ||
         !Number.isFinite(params.opacity) || params.opacity < 0 || params.opacity > 100 ||
         !Number.isFinite(params.highlight) || params.highlight < 0 || params.highlight > 100) {
@@ -100,7 +100,7 @@ export class EditorState {
     if (!this.active) return;
     const effect = id === 'realistic' || id === 'anime' ? undefined : EFFECT_PRESETS[id];
     const style = effect?.style ?? id as StylePreset;
-    this.update({ preset: style, params: effect?.params });
+    this.update({ preset: style, params: effect ? { ...PRESETS[style], ...effect.params } : undefined });
     this.updateSurface(effect?.surface ?? DEFAULT_SURFACE_SETTINGS);
     const current = this.active!;
     this.items = this.items.map(item => item.id === current.id ? { ...current,
@@ -112,7 +112,7 @@ export class EditorState {
     const current = this.active;
     if (!current) return;
     const effect = current.effectPreset ? EFFECT_PRESETS[current.effectPreset] : undefined;
-    const base = { ...PRESETS[current.preset], ...effect?.params };
+    const base = { ...(effect || current.preset !== 'realistic' ? PRESETS[current.preset] : this.realisticPreset), ...effect?.params };
     const baseSurface = effect?.surface ?? DEFAULT_SURFACE_SETTINGS;
     const resolved = resolveFractureSettings(base, { impactStrength: value, overrides: current.overrides,
       surface: { ...baseSurface, chipDensity: Math.max(0, Math.min(100, baseSurface.chipDensity + value - 50)), ...current.surfaceOverrides } });

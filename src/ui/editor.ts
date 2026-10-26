@@ -1,3 +1,4 @@
+import { createApplicationEditor } from '../state/applicationDefaults';
 import { EXPANDED_LIMITS, effectivePercent, displayPercent, effectiveImpactStrength, displayImpactStrength } from '../core/effectRanges';
 import { GLASS_MATERIAL_PRESETS, isGlassMaterialActive, type GlassMaterialPreset } from '../core/glassMaterial';
 import { DEFAULT_SHARD_IMAGE_SETTINGS } from '../state/shardImageState';
@@ -228,7 +229,7 @@ export function mountEditor(root: HTMLElement): void {
       flush();
       image = next; imageName = file.name;
       get('#export-status').textContent = '';
-      state = new EditorState({ width: next.naturalWidth, height: next.naturalHeight });
+      state = createApplicationEditor({ width: next.naturalWidth, height: next.naturalHeight });
       mode = 'add'; drag = null;
       get<HTMLElement>('.metadata').textContent = `${file.name} · ${next.naturalWidth} × ${next.naturalHeight} px`;
       get<HTMLElement>('.placeholder').hidden = true;

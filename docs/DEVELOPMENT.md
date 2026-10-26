@@ -165,3 +165,7 @@ Vite の `base` は `/mirror-crack-generator/` に設定しています。
 
 映り・選択点の65%を旧最大相当にする変換、実数上限、保持する割合の意味、互換APIと検証は
 [調整範囲の拡張](EFFECT_RANGES.md) を参照。`tests/editor-ui.cjs` は現在の通常UIに更新済み。
+
+通常UIの初期値とRealisticの復帰値は `state/applicationDefaults.ts` に集約した。
+正式リリースに向けた確認・タグとPagesの関係は [リリース準備](RELEASE_PLAN.md) を参照。
+`npm test` は並列競合を避けるため1ワーカーで実行する。

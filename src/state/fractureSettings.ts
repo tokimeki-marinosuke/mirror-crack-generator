@@ -29,9 +29,12 @@ export function resolveFractureSettings(base: Readonly<ImpactParams>, input: Fra
   if (macro !== undefined && (!Number.isFinite(macro) || macro < 0 || macro > EXPANDED_LIMITS.impactStrength)) throw new Error('衝撃の強さが範囲外です。');
   // Grow the legacy saturation caps continuously past the old maximum.
   const extension = macro === undefined ? 0 : Math.max(0, Math.min(1, (macro - 100) / (effectivePercent(100) - 100)));
+  // App defaults can already exceed the original ceilings. Keep the neutral base and room above it.
+  const lengthBaseline = base.lengthPercent > 150 ? Math.min(EXPANDED_LIMITS.lengthPercent, base.lengthPercent * 1.25) : 150;
+  const complexityBaseline = base.complexity > 100 ? Math.min(EXPANDED_LIMITS.complexity, base.complexity + 25) : 100;
   const suggestions = macro === undefined ? {} : {
-    lengthPercent: clamp(base.lengthPercent * (0.75 + macro / 200), 10, Math.max(base.lengthPercent, 150 + (EXPANDED_LIMITS.lengthPercent - 150) * extension)),
-    complexity: clamp(base.complexity + (macro - 50) * 0.5, 0, Math.max(base.complexity, 100 + (EXPANDED_LIMITS.complexity - 100) * extension)),
+    lengthPercent: clamp(base.lengthPercent * (0.75 + macro / 200), 10, Math.max(base.lengthPercent, lengthBaseline + (EXPANDED_LIMITS.lengthPercent - lengthBaseline) * extension)),
+    complexity: clamp(base.complexity + (macro - 50) * 0.5, 0, Math.max(base.complexity, complexityBaseline + (EXPANDED_LIMITS.complexity - complexityBaseline) * extension)),
   };
   const resolved = { ...base, ...suggestions, ...input.overrides };
   const ranges: [keyof ImpactParams, number, number, boolean?][] = [

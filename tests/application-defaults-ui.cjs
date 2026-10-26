@@ -1,0 +1,16 @@
+const{chromium}=require('playwright');const assert=require('node:assert/strict');const path=require('node:path');
+(async()=>{const b=await chromium.launch({executablePath:process.env.CHROMIUM_PATH||'/usr/bin/chromium',headless:true,args:['--no-sandbox']});try{
+ const p=await b.newPage({viewport:{width:1500,height:1100},deviceScaleFactor:1});const errors=[];p.on('pageerror',e=>errors.push(e.message));await p.goto(process.env.EDITOR_URL||'http://127.0.0.1:5173/mirror-crack-generator/');
+ const read=async()=>p.evaluate(()=>Object.fromEntries(['preset','seed','impact-strength','radialCount','lengthPercent','complexity','concentricDensity','centerRadius','centerDensity','lineWidth','opacity','surface-darkness','shard-displacement','shard-rotation','shard-reflection','shard-gap','material-preset','material-thickness','material-lightDirection','material-reflectionWidth','material-edgeReflection','material-interiorReflection','material-microDetail'].map(id=>[id,document.getElementById(id).value])));
+ const expected={preset:'realistic',seed:'1','impact-strength':'50',radialCount:'29',lengthPercent:'192',complexity:'74',concentricDensity:'97',centerRadius:'7',centerDensity:'4',lineWidth:'1',opacity:'85','surface-darkness':'60','shard-displacement':'100','shard-rotation':'100','shard-reflection':'100','shard-gap':'0','material-preset':'cinematic','material-thickness':'65','material-lightDirection':'225','material-reflectionWidth':'65','material-edgeReflection':'68','material-interiorReflection':'60','material-microDetail':'22'};
+ await p.locator('#image-file').setInputFiles(path.resolve('docs/samples/light.png'));await p.waitForFunction(()=>!document.querySelector('[data-mode=add]').disabled);
+ const c=p.locator('canvas'),r=await c.boundingBox();await c.click({position:{x:r.width*.45,y:r.height*.45}});assert.deepEqual(await read(),expected);assert.equal(await p.locator('#material-enabled').isChecked(),true);assert.equal(await p.locator('#material-status').getAttribute('data-status'),'active');assert.equal(await p.locator('#shard-status').getAttribute('data-status'),'active');
+ const pixels=()=>c.evaluate(c=>c.toDataURL());const first=await pixels();
+ for(const mode of ['composite','cracks']){const waiting=p.waitForEvent('download');await p.locator('#export-'+mode).click();assert.equal(await(await waiting).failure(),null);}
+ await p.screenshot({path:path.resolve('docs/release-defaults.png'),fullPage:true});
+ await p.locator('#preset').selectOption('anime');await p.locator('#preset').selectOption('realistic');assert.deepEqual(await read(),expected);assert.equal(await pixels(),first);
+ await c.click({position:{x:r.width*.75,y:r.height*.7}});assert.deepEqual(await read(),expected);
+ await p.locator('#shard-reset').click();assert.equal(await p.locator('#shard-reflection').inputValue(),'0');
+ await p.locator('#image-file').setInputFiles(path.resolve('docs/samples/dark.png'));await p.waitForFunction(()=>document.querySelector('.metadata').textContent.includes('dark.png'));await c.click({position:{x:r.width*.5,y:r.height*.5}});assert.deepEqual(await read(),expected);
+ assert.deepEqual(errors,[]);console.log('Application defaults: all screenshot values, both PNGs, preset reset, extra impact, zero reset and new-image initialization passed.');
+}finally{await b.close()}})().catch(e=>{console.error(e);process.exitCode=1});

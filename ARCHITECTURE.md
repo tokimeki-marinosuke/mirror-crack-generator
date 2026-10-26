@@ -183,3 +183,9 @@ type Impact = { id: string; origin: Point; seed: number; preset: StylePreset; pa
 マクロ50の中立点を保つ。生成器の式・旧範囲の入力の再現性は維持し、検証上限のみ拡張する。
 映りの計画は任意のrangeモードを受け、旧APIはlegacy、製品状態はexpanded。強度変更で抽出グラフは変更しない。
 中心保護やアルファの実割合は再解釈しない。詳細は [調整範囲の対応](docs/EFFECT_RANGES.md) を参照。
+
+## アプリケーションの初期値
+
+`state/applicationDefaults.ts` が通常UIのRealistic基準と映りの初期値をまとめる。表示上の強度を実効値へ変換し、
+新画像・追加点・Realisticの再選択で同じ基準を使う。標準マクロ50は基準を維持し、旧上限を超える基準からも強められる。
+低レベルEditorStateの既定と他の割れ方プリセットは互換性を維持する。初期値と公開準備は [リリース計画](docs/RELEASE_PLAN.md) を参照。
