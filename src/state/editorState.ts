@@ -125,9 +125,10 @@ export class EditorState {
     this.items = this.items.map(item => item.id === current.id ? { ...current, params, pattern, surface, fracture, impactStrength: value } : item);
   }
   /** Restore appearance defaults without renumbering, moving or removing impacts. */
-  resetPoints(): void {
+  resetPoints(id?: number): void {
     // Prepare the entire replacement first so a generation failure cannot leave a partial reset.
     const restored = this.items.map(impact => {
+      if (id !== undefined && impact.id !== id) return impact;
       const params = { ...this.realisticPreset }, surface = { ...DEFAULT_SURFACE_SETTINGS };
       const pattern = generateCracks(this.size, impact.origin, 1, params);
       return { id: impact.id, origin: { ...impact.origin }, seed: 1, preset: 'realistic' as const,

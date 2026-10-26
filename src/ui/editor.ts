@@ -1,8 +1,7 @@
 import { MATERIAL_SCALES, SHARD_SCALES, POINT_SCALES, DARKNESS_SCALE, controlPosition, controlValue, type ControlScale } from '../state/controlScale';
-import { createApplicationEditor, resetApplicationSettings } from '../state/applicationDefaults';
+import { APPLICATION_SHARD_DEFAULTS, createApplicationEditor, resetApplicationSettings } from '../state/applicationDefaults';
 import { effectiveImpactStrength, displayImpactStrength } from '../core/effectRanges';
 import { GLASS_MATERIAL_PRESETS, isGlassMaterialActive, type GlassMaterialPreset } from '../core/glassMaterial';
-import { DEFAULT_SHARD_IMAGE_SETTINGS } from '../state/shardImageState';
 import type { SurfaceSettings } from '../state/fractureSettings';
 import { downloadPng, exportFileName, exportPng, type ExportMode } from '../image/exportPng';
 import { containRect, imageToScreen, screenToImage, type Point } from '../core/geometry';
@@ -72,20 +71,20 @@ export function mountEditor(root: HTMLElement): void {
       <div class="stage"><canvas aria-label="画像プレビュー。クリックで衝撃点を追加、マーカーをドラッグして移動"></canvas>
       <p class="placeholder">ここに画像をドロップ<br><span>または「画像を選択」から開く</span></p></div>
       <p class="status" role="status">画像を読み込むとプレビューが表示されます。</p>
-    </section><section class="panel settings"><h2>ガラス材質</h2>
+    </section><section class="panel settings"><details id="advanced-settings"><summary>高度な設定</summary><p class="hint">材質・映り・選択点の亀裂を細かく調整できます。</p><h2>ガラス材質</h2>
       <fieldset id="material-settings" disabled><legend class="sr-only">画像全体のガラス材質</legend>
       <label class="control"><span>材質効果を有効にする</span><input id="material-enabled" type="checkbox"></label>
       <label class="control">材質プリセット<select id="material-preset">${Object.entries(GLASS_MATERIAL_PRESETS).map(([id,p])=>`<option value="${id}">${p.label}</option>`).join('')}<option value="custom" disabled>カスタム</option></select></label>
       <p class="hint">画像全体に適用します。シネマティックは見栄えと視認性のバランス型、リアルは控えめ、ドラマティックは強調型。選択後も自由に調整できます。</p>
       ${materialSliders.map(s=>`<label class="control" for="material-${s.key}">${s.label}<output id="material-${s.key}-value"></output></label><input id="material-${s.key}" type="range" min="0" max="${s.max}" step="0.1">`).join('')}
-      <button type="button" id="material-reset">材質効果を0に戻す</button>
+      <button type="button" id="material-reset">材質をデフォルトに戻す</button>
       <p class="hint">厚み・反射幅・黒い亀裂の太さは独立です。つまみの中央50%が今回の初期の見た目です。横の数値は実際の設定値です。右側でさらに強められます。内部反射は合成PNGだけに適用し、保護領域と重なる破片全体を維持します。</p>
       </fieldset><p id="material-status" role="status"></p><hr><h2>画像全体の映り</h2>
       <fieldset id="shard-settings" disabled><legend class="sr-only">鏡の破片の画像変形</legend>
       <p class="hint">全ての衝撃点で区切られた破片に適用します。ずれ・回転・明暗差は中央50%が初期の見た目です。横の数値は実効値です。隙間0は左端のままです。</p>
       <button type="button" id="shard-demo">映りの変化を試す</button>
       ${shardSliders.map(s=>`<label class="control" for="shard-${s.key}">${s.label}<output id="shard-${s.key}-value">0%</output></label><input id="shard-${s.key}" type="range" min="0" max="100" step="1" value="0">`).join('')}
-      <button type="button" id="shard-reset">映りの変化を0に戻す</button>
+      <button type="button" id="shard-reset">映りをデフォルトに戻す</button>
       <p class="hint">中心密度0%の領域と重なる破片全体を保護します。大きい破片から最大256個を変更し、小片は元画像のまま残します。合成PNGに反映し、亀裂のみPNGは従来どおりです。</p>
       </fieldset><p id="shard-status" role="status"></p><hr><h2>選択点の調整</h2>
       <fieldset id="settings" disabled><legend class="sr-only">亀裂設定</legend>
@@ -101,9 +100,10 @@ export function mountEditor(root: HTMLElement): void {
       <label class="control" for="seed">シード（整数）</label>
       <input id="seed" type="number" step="1" min="-9007199254740991" max="9007199254740991" value="1">
       <button type="button" id="regenerate">再生成</button>
+      <button type="button" id="point-reset">選択点の亀裂をデフォルトに戻す</button>
       <p class="hint">再生成でシードを1つ進めます。スライダー操作ではシードを保持します。</p>
       </fieldset>
-
+      </details>
     </section></main>`;
   const get = <T extends HTMLElement>(selector: string): T => root.querySelector<T>(selector)!;
   const canvas = get<HTMLCanvasElement>('canvas');
@@ -281,6 +281,7 @@ export function mountEditor(root: HTMLElement): void {
     button.addEventListener('click', () => { mode = button.dataset.mode as Mode; refresh(); });
   }
   list.addEventListener('change', () => edit(() => state?.select(Number(list.value))));
+  get('#point-reset').addEventListener('click',()=>edit(()=>{if(state?.active)state.resetPoints(state.active.id);}));
   get('#reset-settings').addEventListener('click',()=>edit(()=>{if(state)resetApplicationSettings(state);}));
   get('#delete-impact').addEventListener('click', () => edit(() => {
     state?.remove();
@@ -324,9 +325,9 @@ export function mountEditor(root: HTMLElement): void {
   }
   get('#material-enabled').addEventListener('change',()=>edit(()=>state?.glass.update({enabled:get<HTMLInputElement>('#material-enabled').checked})));
   get('#material-preset').addEventListener('change',()=>edit(()=>state?.glass.applyPreset(get<HTMLSelectElement>('#material-preset').value as GlassMaterialPreset)));
-  get('#material-reset').addEventListener('click',()=>edit(()=>state?.glass.reset()));
+  get('#material-reset').addEventListener('click',()=>edit(()=>state?.glass.applyPreset('cinematic')));
   get('#shard-demo').addEventListener('click',()=>edit(()=>state?.shards.update({displacement:60,rotation:45,reflection:50,gap:25})));
-  get('#shard-reset').addEventListener('click',()=>edit(()=>state?.shards.update(DEFAULT_SHARD_IMAGE_SETTINGS)));
+  get('#shard-reset').addEventListener('click',()=>edit(()=>state?.shards.update(APPLICATION_SHARD_DEFAULTS)));
   function applySeed(): boolean {
     const value = seed.valueAsNumber;
     if (!Number.isSafeInteger(value)) {

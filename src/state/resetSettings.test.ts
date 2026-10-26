@@ -25,3 +25,9 @@ it('手動上書きを解除し、リセット後の標準マクロで初期値�
  const state=createApplicationEditor(size);state.add({x:320,y:225});state.update({params:{lengthPercent:30,complexity:0}});resetApplicationSettings(state);const initial=state.active!.pattern;
  state.updateStrength(50);expect(state.active!.params).toEqual(APPLICATION_IMPACT_DEFAULTS);expect(state.active!.pattern).toBe(initial);
 });
+it('選択点だけをデフォルトに戻し、他の点と画像全体の設定を保持する',()=>{
+ const state=createApplicationEditor(size);state.add({x:200,y:150});state.applyPreset('shattered');state.add({x:600,y:400});state.update({seed:42,params:{lineWidth:8,centerDensity:100}});
+ const other=state.impacts[0];state.glass.applyPreset('real');state.shards.update({gap:25});const glass=state.glass.settings,shards=state.shards.settings;
+ state.resetPoints(state.selectedId!);
+ expect(state.impacts[0]).toBe(other);expect(state.selectedId).toBe(2);expect(state.active!.origin).toEqual({x:600,y:400});expect(state.active!.seed).toBe(1);expect(state.active!.params).toEqual(APPLICATION_IMPACT_DEFAULTS);expect(state.active!.overrides).toEqual({});expect(state.glass.settings).toBe(glass);expect(state.shards.settings).toBe(shards);
+});

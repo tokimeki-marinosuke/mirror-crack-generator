@@ -20,3 +20,7 @@ canvas{touch-action:none}.sr-only{position:absolute;width:1px;height:1px;padding
 #export-composite,#export-cracks{width:100%;margin-bottom:10px}#export-composite{background:#5ff5d2;color:#10251f}#export-status{font-size:12px;line-height:1.8;overflow-wrap:anywhere;color:#a8b5c9}
 
 #reset-settings{width:100%}
+
+#advanced-settings>summary{cursor:pointer;font-weight:700;font-size:16px}
+#advanced-settings>summary:focus-visible{outline:2px solid #5ff5d2;outline-offset:4px}
+#point-reset{width:100%;margin-top:12px}

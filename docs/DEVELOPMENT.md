@@ -154,7 +154,7 @@ Vite の `base` は `/mirror-crack-generator/` に設定しています。
 
 第4段階の本番材質UI・シネマティック等のプリセットと共通プレビュー/PNG検証は
 [ガラス材質の製品接続](GLASS_MATERIAL_CONTROLS.md) を参照。通常画面の材質効果は既定で有効。
-従来の画素を確認するときは「材質効果を0に戻す」を使う。
+材質を無効にするときは有効化チェックを解除する。個別リセットはデフォルトへの復帰。
 
 第5段階の見た目を維持した陰影計算の最適化、前版との画素比較、高解像度PNGの測定は
 [材質の品質・負荷検証](GLASS_MATERIAL_QUALITY.md) を参照。
@@ -177,3 +177,5 @@ Vite の `base` は `/mirror-crack-generator/` に設定しています。
 材質・映り・全点の調整とシードを復帰する。`resetApplicationSettings` と `EditorState.resetPoints` を使い、
 待機中のスライダー入力は既存の編集キューで処理してから初期化する。
 Playwrightでの検証は `node tests/reset-settings-ui.cjs`（必要ならNODE_PATHを指定）。
+
+材質・映り・亀裂は初期状態で閉じた「高度な設定」内。個別リセットは各グループの起動時設定へ戻す。選択点リセットは他点を保持する。

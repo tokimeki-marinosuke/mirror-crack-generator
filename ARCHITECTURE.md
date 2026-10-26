@@ -201,4 +201,7 @@ type Impact = { id: string; origin: Point; seed: number; preset: StylePreset; pa
 `EditorState.resetPoints` は全点の置換データを先に生成し、ID・現在座標・選択・次のIDを保持したまま
 初期基準とシード1へ戻す。`resetApplicationSettings` が材質シネマティックと映り初期値を合わせて復帰する。
 UIは既存の編集キューをフラッシュしてから初期化し、プレビューを再描画する。画像オブジェクトは置換しない。
-画像なし・読み込み中・保存中はリセットボタンを無効化する。効果0の既存操作は維持する。
+画像なし・読み込み中・保存中はリセットボタンを無効化する。通常UIの個別リセットも0ではなく初期値へ戻す。低レベルの効果0 APIは互換用に維持する。
+
+材質・映り・亀裂の詳細はネイティブの`details#advanced-settings`内に置き、初期状態で閉じる。
+`resetPoints(id)`は指定点のみ、引数なしは全点を復帰する。材質はシネマティック、映りはAPPLICATION_SHARD_DEFAULTSを使う。
