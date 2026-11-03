@@ -66,14 +66,14 @@ export function mountEditor(root: HTMLElement): void {
       </div>
       <label class="control">衝撃点を選択<select id="impact-list" disabled><option>衝撃点なし</option></select></label>
       <p class="coordinates" aria-live="polite">未指定</p>
-      <button type="button" id="delete-impact" disabled>選択した衝撃点を削除</button>
+      <button type="button" id="delete-impact" disabled>選択した衝撃点を削除（Delete）</button>
       <p class="hint">追加モードで画像をクリックすると追加。マーカーをクリックすると選択、ドラッグすると移動できます。移動モードではクリック先へ選択点を移します。</p>
       <p class="hint">画像はブラウザ内で処理され、サーバーへ送信されません。</p>
       <hr><h2>設定のリセット</h2>
       <button type="button" id="reset-settings" disabled>すべての調整を初期値に戻す</button>
       <p class="hint">材質・映り・全衝撃点を基準の設定に戻します。画像・衝撃点の位置・選択は保持し、シードは1へ戻します。</p>
     </section><section class="workspace" aria-label="画像ドロップ領域">
-      <div class="stage"><canvas aria-label="画像プレビュー。クリックで衝撃点を追加、マーカーをドラッグして移動"></canvas>
+      <div class="stage"><canvas tabindex="0" aria-label="画像プレビュー。クリックで衝撃点を追加、マーカーをドラッグして移動。Deleteキーで選択点を削除"></canvas>
       <p class="placeholder">ここに画像をドロップ<br><span>または「画像を選択」から開く</span></p></div>
       <p class="status" role="status">画像を読み込むとプレビューが表示されます。</p>
     </section><section class="panel settings"><h2>ガラス材質</h2>
@@ -90,7 +90,7 @@ export function mountEditor(root: HTMLElement): void {
       <label class="control">映りプリセット<select id="shard-preset"><option value="default">デフォルト</option><option value="subtle">控えめ</option><option value="none">変形なし</option><option value="custom" disabled>カスタム</option></select></label>
       ${savedControls('shard')}<details id="shard-advanced"><summary>高度な設定</summary>
       <p class="hint">全ての衝撃点で区切られた破片に適用します。ずれ・回転・明暗差は中央50%が初期の見た目です。横の数値は実効値です。隙間0は左端のままです。</p>
-      <button type="button" id="shard-demo">映りの変化を試す</button>
+
       ${shardSliders.map(s=>`<label class="control" for="shard-${s.key}">${s.label}<output id="shard-${s.key}-value">0%</output></label><input id="shard-${s.key}" type="range" min="0" max="100" step="1" value="0">`).join('')}
       <button type="button" id="shard-reset">映りをデフォルトに戻す</button>
       <p class="hint">中心密度0%の領域と重なる破片全体を保護します。大きい破片から最大256個を変更し、小片は元画像のまま残します。合成PNGに反映し、亀裂のみPNGは従来どおりです。</p>
@@ -133,6 +133,7 @@ export function mountEditor(root: HTMLElement): void {
   let loading = false;
   let exporting = false;
   function syncExportControls(): void {
+    get<HTMLButtonElement>('#delete-impact').disabled = !state?.active || loading || exporting || !!drag;
     get<HTMLButtonElement>('#undo').disabled = !history.canUndo || loading || exporting || !!drag;
     get<HTMLButtonElement>('#redo').disabled = !history.canRedo || loading || exporting || !!drag;
     get<HTMLButtonElement>('#reset-settings').disabled = !image || loading || exporting;
@@ -265,7 +266,17 @@ export function mountEditor(root: HTMLElement): void {
   }
   get('#undo').addEventListener('click',()=>navigateHistory('undo'));
   get('#redo').addEventListener('click',()=>navigateHistory('redo'));
+  function deleteSelectedImpact():void {
+    if(!state?.active||loading||exporting||drag)return;
+    edit(()=>{state!.remove();if(!state!.active)mode='add';});
+  }
   window.addEventListener('keydown',event=>{
+    if(event.key==='Delete'&&!event.ctrlKey&&!event.metaKey&&!event.altKey&&!event.shiftKey&&!event.isComposing){
+      const target=event.target;
+      if(target instanceof HTMLElement&&target.closest('input,textarea,select,[contenteditable]:not([contenteditable=false])'))return;
+      if(state?.active&&!loading&&!exporting&&!drag){event.preventDefault();if(!event.repeat)deleteSelectedImpact();}
+      return;
+    }
     if(!(event.ctrlKey||event.metaKey)||event.altKey)return;
     const target=event.target;
     if(target instanceof HTMLElement&&(target.closest('input:not([type=range]):not([type=checkbox]):not([type=file]),textarea,select,[contenteditable]:not([contenteditable=false])')))return;
@@ -341,10 +352,7 @@ export function mountEditor(root: HTMLElement): void {
   list.addEventListener('change', () => edit(() => state?.select(Number(list.value))));
   get('#point-reset').addEventListener('click',()=>edit(()=>{if(state?.active)state.resetPoints(state.active.id);}));
   get('#reset-settings').addEventListener('click',()=>edit(()=>{if(state)resetApplicationSettings(state);}));
-  get('#delete-impact').addEventListener('click', () => edit(() => {
-    state?.remove();
-    if (!state?.active) mode = 'add';
-  }));
+  get('#delete-impact').addEventListener('click',deleteSelectedImpact);
   preset.addEventListener('change', () => edit(() => state?.applyPreset(preset.value as StylePreset | EffectPreset)));
   for (const slider of sliders) {
     const control = get<HTMLInputElement>(`#${slider.key}`);
@@ -415,7 +423,6 @@ export function mountEditor(root: HTMLElement): void {
   get('#material-enabled').addEventListener('change',()=>edit(()=>state?.glass.update({enabled:get<HTMLInputElement>('#material-enabled').checked})));
   get('#material-preset').addEventListener('change',()=>edit(()=>state?.glass.applyPreset(get<HTMLSelectElement>('#material-preset').value as GlassMaterialPreset)));
   get('#material-reset').addEventListener('click',()=>edit(()=>state?.glass.applyPreset('cinematic')));
-  get('#shard-demo').addEventListener('click',()=>edit(()=>state?.shards.update({displacement:60,rotation:45,reflection:50,gap:25})));
   get('#shard-reset').addEventListener('click',()=>edit(()=>state?.shards.update(APPLICATION_SHARD_DEFAULTS)));
   function applySeed(): boolean {
     const value = seed.valueAsNumber;
@@ -440,6 +447,7 @@ export function mountEditor(root: HTMLElement): void {
     if (!state || event.button !== 0 || !event.isPrimary) return;
     const point = toImage(event);
     if (!point) return;
+    canvas.focus({preventScroll:true});
     const rect = imageRect();
     const hit = [...state.impacts].reverse().find(impact => {
       const p = imageToScreen(impact.origin, state!.size, rect);

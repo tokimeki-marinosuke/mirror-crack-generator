@@ -15,16 +15,16 @@ const {chromium}=require('playwright');const assert=require('node:assert/strict'
   assert.equal(await page.locator('#shard-status').getAttribute('data-status'),'active');assert.notEqual(await screenshot(),basePreview,key);
   await zeroShards();assert.equal(await screenshot(),basePreview,'reset '+key);
  }
- await page.locator('#shard-demo').click();assert.notEqual(await screenshot(),basePreview);
+ await page.locator('#shard-preset').selectOption('subtle');assert.notEqual(await screenshot(),basePreview);
  const changed=await save('composite');assert.equal(changed.width,800);assert.equal(changed.height,500);assert.notEqual(changed.hash,composite.hash);
  assert.deepEqual(await save('cracks'),cracks);
  await page.evaluate(()=>scrollTo(0,0));await page.waitForTimeout(50);
  await page.screenshot({path:path.resolve('docs/shard-composite-ui.png'),fullPage:true});
  await zeroShards();assert.equal(await screenshot(),basePreview);assert.deepEqual(await save('composite'),composite);
- await page.locator('#shard-demo').click();await canvas.click({position:{x:rect.width*.75,y:rect.height*.7}});await page.locator('#impact-list').selectOption('1');assert.equal(await page.locator('#shard-reflection').getAttribute('data-effective'),'50');
- await page.locator('#preset').selectOption('delicate');assert.equal(await page.locator('#shard-reflection').getAttribute('data-effective'),'50');assert.match(await page.locator('#shard-status').textContent(),/保護/);
+ await page.locator('#shard-preset').selectOption('subtle');await canvas.click({position:{x:rect.width*.75,y:rect.height*.7}});await page.locator('#impact-list').selectOption('1');assert.equal(await page.locator('#shard-reflection').getAttribute('data-effective'),'30');
+ await page.locator('#preset').selectOption('delicate');assert.equal(await page.locator('#shard-reflection').getAttribute('data-effective'),'30');assert.match(await page.locator('#shard-status').textContent(),/保護/);
  // Pending slider input must be flushed before PNG creation, without waiting for RAF.
  const prior=await save('composite');const pending=page.waitForEvent('download');await page.evaluate(()=>{const s=document.querySelector('#shard-reflection');s.value='100';s.dispatchEvent(new Event('input',{bubbles:true}));document.querySelector('#export-composite').click();});const download=await pending;assert.equal(await download.failure(),null);assert.equal(await page.locator('#shard-reflection-value').textContent(),'200%');assert.ok(prior.hash);
- await page.locator('#image-file').setInputFiles(path.resolve('docs/samples/dark.png'));await page.waitForFunction(()=>document.querySelector('.metadata').textContent.includes('dark.png'));assert.equal(await page.locator('#shard-reflection').inputValue(),'50');assert.equal(await page.locator('#shard-demo').isDisabled(),true);
+ await page.locator('#image-file').setInputFiles(path.resolve('docs/samples/dark.png'));await page.waitForFunction(()=>document.querySelector('.metadata').textContent.includes('dark.png'));assert.equal(await page.locator('#shard-reflection').inputValue(),'50');assert.equal(await page.locator('#shard-preset').isDisabled(),true);
  assert.deepEqual(errors,[]);console.log('Shard composite UI: four controls, zero controls, both PNGs, global settings, protection, pending export and new-image reset passed.');
 }finally{await browser.close()}})().catch(e=>{console.error(e);process.exitCode=1});
