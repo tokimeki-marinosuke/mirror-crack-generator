@@ -21,7 +21,7 @@ const {chromium}=require('playwright');const assert=require('node:assert/strict'
  await page.evaluate(()=>scrollTo(0,0));await page.waitForTimeout(50);
  await page.screenshot({path:path.resolve('docs/shard-composite-ui.png'),fullPage:true});
  await zeroShards();assert.equal(await screenshot(),basePreview);assert.deepEqual(await save('composite'),composite);
- await page.locator('#shard-preset').selectOption('subtle');await canvas.click({position:{x:rect.width*.75,y:rect.height*.7}});await page.locator('#impact-list').selectOption('1');assert.equal(await page.locator('#shard-reflection').getAttribute('data-effective'),'30');
+ await page.locator('#shard-preset').selectOption('subtle');await canvas.click({position:{x:rect.width*.75,y:rect.height*.7}});await page.locator('#impact-list [data-impact-id="'+'1'+'"]').click();assert.equal(await page.locator('#shard-reflection').getAttribute('data-effective'),'30');
  await page.locator('#preset').selectOption('delicate');assert.equal(await page.locator('#shard-reflection').getAttribute('data-effective'),'30');assert.match(await page.locator('#shard-status').textContent(),/保護/);
  // Pending slider input must be flushed before PNG creation, without waiting for RAF.
  const prior=await save('composite');const pending=page.waitForEvent('download');await page.evaluate(()=>{const s=document.querySelector('#shard-reflection');s.value='100';s.dispatchEvent(new Event('input',{bubbles:true}));document.querySelector('#export-composite').click();});const download=await pending;assert.equal(await download.failure(),null);assert.equal(await page.locator('#shard-reflection-value').textContent(),'200%');assert.ok(prior.hash);

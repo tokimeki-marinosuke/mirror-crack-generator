@@ -186,3 +186,5 @@ Playwrightでの検証は `node tests/reset-settings-ui.cjs`（必要ならNODE_
 Undo/Redoの状態テストは `src/state/editorHistory.test.ts`。ブラウザ確認は `node tests/undo-redo-ui.cjs`（PlaywrightのNODE_PATHが必要な環境では指定、`EDITOR_URL`でdev/previewを指定可）。ドラッグ/キャンセル、連続スライダー、履歴分岐、両PNGの完全一致、ショートカットと入力欄の除外、画像変更時の履歴初期化を確認する。
 
 `node tests/delete-key-ui.cjs`はDeleteによる選択点削除、Undo/Redo、入力欄・修飾キー・キーリピートの保護とデモボタンの撤去を確認する。`shard-composite-ui.cjs`はデモ操作の代わりに公開プリセット「控えめ」で映りを検証する。
+
+`node tests/layers-help-ui.cjs`で階層一覧・キー操作・マーカー連動・Delete/Undoと説明のhover/focus/tapを確認する。既存のリセット・Undo・Delete・合成テストもselect要素の代わりに一覧の行を操作する。

@@ -1,3 +1,5 @@
+import { mountHelp } from './help';
+import { mountImpactLayers } from './impactLayers';
 import { EditorHistory } from '../state/editorHistory';
 import { PRESET_STORAGE_KEY, decodePresets, savePreset, type SavedPreset, type PresetGroup } from '../state/customPresets';
 import { MATERIAL_SCALES, SHARD_SCALES, POINT_SCALES, DARKNESS_SCALE, controlPosition, controlValue, type ControlScale } from '../state/controlScale';
@@ -64,7 +66,7 @@ export function mountEditor(root: HTMLElement): void {
         <button type="button" data-mode="add" aria-pressed="true" disabled>追加</button>
         <button type="button" data-mode="move" aria-pressed="false" disabled>移動</button>
       </div>
-      <label class="control">衝撃点を選択<select id="impact-list" disabled><option>衝撃点なし</option></select></label>
+      <p class="control" id="impact-list-label">衝撃点を選択</p><div id="impact-list" class="impact-layers" role="tree" aria-labelledby="impact-list-label"></div>
       <p class="coordinates" aria-live="polite">未指定</p>
       <button type="button" id="delete-impact" disabled>選択した衝撃点を削除（Delete）</button>
       <p class="hint">追加モードで画像をクリックすると追加。マーカーをクリックすると選択、ドラッグすると移動できます。移動モードではクリック先へ選択点を移します。</p>
@@ -80,16 +82,16 @@ export function mountEditor(root: HTMLElement): void {
       <fieldset id="material-settings" disabled><legend class="sr-only">画像全体のガラス材質</legend>
       <label class="control"><span>材質効果を有効にする</span><input id="material-enabled" type="checkbox"></label>
       <label class="control">材質プリセット<select id="material-preset">${Object.entries(GLASS_MATERIAL_PRESETS).map(([id,p])=>`<option value="${id}">${p.label}</option>`).join('')}<option value="custom" disabled>カスタム</option></select></label>
-      ${savedControls('material')}<details id="material-advanced"><summary>高度な設定</summary>
       <p class="hint">画像全体に適用します。シネマティックは見栄えと視認性のバランス型、リアルは控えめ、ドラマティックは強調型。選択後も自由に調整できます。</p>
+      ${savedControls('material')}<details id="material-advanced"><summary>高度な設定</summary>
       ${materialSliders.map(s=>`<label class="control" for="material-${s.key}">${s.label}<output id="material-${s.key}-value"></output></label><input id="material-${s.key}" type="range" min="0" max="${s.max}" step="0.1">`).join('')}
       <button type="button" id="material-reset">材質をデフォルトに戻す</button>
       <p class="hint">厚み・反射幅・黒い亀裂の太さは独立です。つまみの中央50%が今回の初期の見た目です。横の数値は実際の設定値です。右側でさらに強められます。内部反射は合成PNGだけに適用し、保護領域と重なる破片全体を維持します。</p>
       </details></fieldset><p id="material-status" role="status"></p><hr><h2>画像全体の映り</h2>
       <fieldset id="shard-settings" disabled><legend class="sr-only">鏡の破片の画像変形</legend>
       <label class="control">映りプリセット<select id="shard-preset"><option value="default">デフォルト</option><option value="subtle">控えめ</option><option value="none">変形なし</option><option value="custom" disabled>カスタム</option></select></label>
-      ${savedControls('shard')}<details id="shard-advanced"><summary>高度な設定</summary>
       <p class="hint">全ての衝撃点で区切られた破片に適用します。ずれ・回転・明暗差は中央50%が初期の見た目です。横の数値は実効値です。隙間0は左端のままです。</p>
+      ${savedControls('shard')}<details id="shard-advanced"><summary>高度な設定</summary>
 
       ${shardSliders.map(s=>`<label class="control" for="shard-${s.key}">${s.label}<output id="shard-${s.key}-value">0%</output></label><input id="shard-${s.key}" type="range" min="0" max="100" step="1" value="0">`).join('')}
       <button type="button" id="shard-reset">映りをデフォルトに戻す</button>
@@ -97,8 +99,8 @@ export function mountEditor(root: HTMLElement): void {
       </details></fieldset><p id="shard-status" role="status"></p><hr><h2>選択点の調整</h2>
       <fieldset id="settings" disabled><legend class="sr-only">亀裂設定</legend>
       <label class="control">プリセット<select id="preset"><option value="realistic">Realistic</option><option value="anime">Anime</option>${Object.entries(EFFECT_PRESETS).map(([id, p]) => `<option value="${id}">${p.label}</option>`).join('')}</select></label>
-      ${savedControls('point')}<details id="point-advanced"><summary>高度な設定</summary>
       <p class="hint">切り替えると調整値を初期化します。位置・シードは保持します。</p>
+      ${savedControls('point')}<details id="point-advanced"><summary>高度な設定</summary>
       <label class="control" for="impact-strength">衝撃の強さ<output id="impact-strength-value"></output></label>
       <input id="impact-strength" type="range" min="0" max="100" step="1" value="50">
       <p class="hint">長さ・分岐をまとめて調整。個別に変更した項目を優先します。プリセットの選び直しで個別調整を解除します。中心保護・黒い亀裂の太さは保持します。50%は今回の標準です。右側でさらに強められます。</p>
@@ -118,7 +120,9 @@ export function mountEditor(root: HTMLElement): void {
   const input = get<HTMLInputElement>('#image-file');
   const stage = get<HTMLDivElement>('.stage');
   const status = get<HTMLElement>('.status');
-  const list = get<HTMLSelectElement>('#impact-list');
+  const list = get<HTMLElement>('#impact-list');
+  const layers = mountImpactLayers(list,id=>edit(()=>state?.select(id)));
+  mountHelp(root);
   const settings = get<HTMLFieldSetElement>('#settings');
   const seed = get<HTMLInputElement>('#seed');
   const preset = get<HTMLSelectElement>('#preset');
@@ -181,12 +185,7 @@ export function mountEditor(root: HTMLElement): void {
     }
     const shard=state?.shards.settings;
     get<HTMLSelectElement>('#shard-preset').value=shard&&Object.keys(APPLICATION_SHARD_DEFAULTS).every(k=>shard[k as keyof typeof shard]===APPLICATION_SHARD_DEFAULTS[k as keyof typeof shard])?'default':shard&&Object.values(shard).every(v=>v===0)?'none':shard&&shard.displacement===30&&shard.rotation===20&&shard.reflection===30&&shard.gap===0?'subtle':'custom';
-    list.replaceChildren();
-    if (state?.impacts.length) {
-      for (const impact of state.impacts) list.add(new Option(`衝撃点 ${impact.id}`, String(impact.id)));
-      list.value = String(state.selectedId);
-    } else list.add(new Option('衝撃点なし', ''));
-    list.disabled = !active;
+    layers.render(state?.impacts??[],state?.selectedId??null);
     settings.disabled = !active;
     get<HTMLFieldSetElement>('#material-settings').disabled=!image;
     get<HTMLInputElement>('#material-enabled').checked=state?.glass.settings.enabled??false;
@@ -349,7 +348,6 @@ export function mountEditor(root: HTMLElement): void {
   for (const button of root.querySelectorAll<HTMLButtonElement>('[data-mode]')) {
     button.addEventListener('click', () => { mode = button.dataset.mode as Mode; refresh(); });
   }
-  list.addEventListener('change', () => edit(() => state?.select(Number(list.value))));
   get('#point-reset').addEventListener('click',()=>edit(()=>{if(state?.active)state.resetPoints(state.active.id);}));
   get('#reset-settings').addEventListener('click',()=>edit(()=>{if(state)resetApplicationSettings(state);}));
   get('#delete-impact').addEventListener('click',deleteSelectedImpact);
