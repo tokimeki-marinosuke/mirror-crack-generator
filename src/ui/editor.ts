@@ -1,3 +1,4 @@
+import { EditorHistory } from '../state/editorHistory';
 import { PRESET_STORAGE_KEY, decodePresets, savePreset, type SavedPreset, type PresetGroup } from '../state/customPresets';
 import { MATERIAL_SCALES, SHARD_SCALES, POINT_SCALES, DARKNESS_SCALE, controlPosition, controlValue, type ControlScale } from '../state/controlScale';
 import { APPLICATION_SHARD_DEFAULTS, createApplicationEditor, resetApplicationSettings } from '../state/applicationDefaults';
@@ -50,7 +51,7 @@ export function mountEditor(root: HTMLElement): void {
   root.innerHTML = `
     <header><p class="eyebrow">BROWSER IMAGE EDITOR</p><h1>Mirror Crack Generator</h1>
     <p>衝撃点を追加し、選択した点ごとに亀裂を調整できます。</p></header>
-    <main><section class="panel"><h2>画像</h2>
+    <main><section class="panel"><div class="tools history-tools" role="group" aria-label="編集履歴"><button type="button" id="undo" disabled title="元に戻す（Ctrl / ⌘ + Z）">元に戻す</button><button type="button" id="redo" disabled title="やり直す（Ctrl + Y / ⌘ + Shift + Z）">やり直す</button></div><h2>画像</h2>
       <label class="upload">画像を選択<input id="image-file" type="file" accept="image/png,image/jpeg,image/webp"></label>
       <p class="hint">PNG / JPEG / WebP · ドロップ対応</p>
       <p class="metadata">画像未選択</p>      <hr><h2>PNG出力</h2>
@@ -123,6 +124,7 @@ export function mountEditor(root: HTMLElement): void {
   const preset = get<HTMLSelectElement>('#preset');
   let image: HTMLImageElement | null = null;
   let state: EditorState | null = null;
+  let history = new EditorHistory();
   let saved: SavedPreset[] = [];
   try { saved = decodePresets(localStorage.getItem(PRESET_STORAGE_KEY)); } catch { get('#material-save-status').textContent='保存済みプリセットを読み込めません。ブラウザの保存設定をご確認ください。'; }
   let mode: Mode = 'add';
@@ -131,6 +133,8 @@ export function mountEditor(root: HTMLElement): void {
   let loading = false;
   let exporting = false;
   function syncExportControls(): void {
+    get<HTMLButtonElement>('#undo').disabled = !history.canUndo || loading || exporting || !!drag;
+    get<HTMLButtonElement>('#redo').disabled = !history.canRedo || loading || exporting || !!drag;
     get<HTMLButtonElement>('#reset-settings').disabled = !image || loading || exporting;
     get<HTMLButtonElement>('#export-composite').disabled = !image || loading || exporting;
     get<HTMLButtonElement>('#export-cracks').disabled = !image || loading || exporting;
@@ -225,18 +229,54 @@ export function mountEditor(root: HTMLElement): void {
   }
   const pending = new Map<string, () => void>();
   let frame = 0;
+  function perform(action:()=>void, group?:string):void {
+    const before=state?.snapshot();
+    try {
+      action();
+      if(before&&state)history.record(before,state.snapshot(),group);
+    }catch(error){
+      if(before&&state)state.restore(before);
+      throw error;
+    }
+  }
   function flush(): void {
     cancelAnimationFrame(frame); frame = 0;
+    const group=[...pending.keys()].join('|');
     const actions = [...pending.values()]; pending.clear();
-    for (const action of actions) action();
+    if(actions.length)perform(()=>{for(const action of actions)action();},group);
   }
   function queue(key: string, action: () => void): void {
     pending.set(key, action);
-    if (!frame) frame = requestAnimationFrame(() => edit(() => {}));
+    if (!frame) frame = requestAnimationFrame(() => {
+      try{flush();refresh();}catch(error){status.textContent=error instanceof Error?error.message:'編集できませんでした。';}
+    });
   }
-  function edit(action: () => void): void {
-    try { flush(); action(); refresh(); }
+  function edit(action: () => void, group?:string): void {
+    try { flush(); if(!group)history.endGroup();perform(action,group); refresh(); }
     catch (error) { status.textContent = error instanceof Error ? error.message : '編集できませんでした。'; }
+  }
+  function navigateHistory(direction:'undo'|'redo'):void {
+    if(!state||loading||exporting||drag)return;
+    try {
+      flush();const snapshot=history[direction]();
+      if(snapshot){state.restore(snapshot);if(!state.active)mode='add';}
+      refresh();
+    }catch(error){status.textContent=error instanceof Error?error.message:'履歴を復元できませんでした。';}
+  }
+  get('#undo').addEventListener('click',()=>navigateHistory('undo'));
+  get('#redo').addEventListener('click',()=>navigateHistory('redo'));
+  window.addEventListener('keydown',event=>{
+    if(!(event.ctrlKey||event.metaKey)||event.altKey)return;
+    const target=event.target;
+    if(target instanceof HTMLElement&&(target.closest('input:not([type=range]):not([type=checkbox]):not([type=file]),textarea,select,[contenteditable]:not([contenteditable=false])')))return;
+    const key=event.key.toLowerCase();
+    if(key==='z'||key==='y'){
+      event.preventDefault();navigateHistory(key==='y'||event.shiftKey?'redo':'undo');
+    }
+  });
+  for(const control of root.querySelectorAll<HTMLInputElement>('input[type=range]')){
+    const finish=()=>{try{flush();history.endGroup();refresh();}catch(error){status.textContent=error instanceof Error?error.message:'編集できませんでした。';}};
+    control.addEventListener('change',finish);control.addEventListener('blur',finish);
   }
   async function open(files: FileList | null): Promise<void> {
     if (!files?.length) return;
@@ -255,6 +295,7 @@ export function mountEditor(root: HTMLElement): void {
       image = next; imageName = file.name;
       get('#export-status').textContent = '';
       state = createApplicationEditor({ width: next.naturalWidth, height: next.naturalHeight });
+      history = new EditorHistory();
       mode = 'add'; drag = null;
       get<HTMLElement>('.metadata').textContent = `${file.name} · ${next.naturalWidth} × ${next.naturalHeight} px`;
       get<HTMLElement>('.placeholder').hidden = true;
@@ -419,19 +460,19 @@ export function mountEditor(root: HTMLElement): void {
     const point = toImage(event);
     if (!point) return;
     drag.moved = true;
-    edit(() => state!.update({ origin: point }));
+    edit(() => state!.update({ origin: point }), 'drag');
   });
   const stopDrag = (event: PointerEvent) => {
     if (drag?.pointerId !== event.pointerId) return;
-    drag = null;
+    drag = null;history.endGroup();syncExportControls();
     if (canvas.hasPointerCapture(event.pointerId)) canvas.releasePointerCapture(event.pointerId);
   };
   canvas.addEventListener('pointerup', stopDrag);
   canvas.addEventListener('pointercancel', event => {
-    if (drag?.pointerId === event.pointerId && state) edit(() => state!.update({ origin: drag!.origin }));
+    if (drag?.pointerId === event.pointerId && state) edit(() => state!.update({ origin: drag!.origin }), 'drag');
     stopDrag(event);
   });
-  canvas.addEventListener('lostpointercapture', () => { drag = null; });
+  canvas.addEventListener('lostpointercapture', () => { drag = null;history.endGroup();syncExportControls(); });
   new ResizeObserver(redraw).observe(stage);
   window.addEventListener('resize', redraw);
   refresh();

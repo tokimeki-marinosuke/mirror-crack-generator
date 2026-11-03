@@ -182,3 +182,5 @@ Playwrightでの検証は `node tests/reset-settings-ui.cjs`（必要ならNODE_
 
 プリセットは常時表示し、材質・映り・選択点それぞれの高度な設定だけ折りたたむ。PNG出力は画像と衝撃点操作の間。
 `node tests/preset-library-ui.cjs`で保存・再読み込み・呼び出し・削除・保存拒否、描画一致と両PNGを確認できる（PlaywrightのNODE_PATHが必要な環境では指定）。
+
+Undo/Redoの状態テストは `src/state/editorHistory.test.ts`。ブラウザ確認は `node tests/undo-redo-ui.cjs`（PlaywrightのNODE_PATHが必要な環境では指定、`EDITOR_URL`でdev/previewを指定可）。ドラッグ/キャンセル、連続スライダー、履歴分岐、両PNGの完全一致、ショートカットと入力欄の除外、画像変更時の履歴初期化を確認する。

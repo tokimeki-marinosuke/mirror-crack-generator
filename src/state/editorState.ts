@@ -1,3 +1,5 @@
+import type { GlassMaterialSettings, GlassMaterialPreset } from '../core/glassMaterial';
+import type { ShardImageSettings } from './shardImageState';
 import { EXPANDED_LIMITS } from '../core/effectRanges';
 import { GlassMaterialState } from './glassMaterialState';
 import { ShardImageState } from './shardImageState';
@@ -22,6 +24,11 @@ export type Impact = {
   overrides?: Partial<ImpactParams>;
   surfaceOverrides?: Partial<SurfaceSettings>;
   fracture?: FractureGeometry;
+};
+export type ImpactSnapshot = Omit<Impact, 'pattern' | 'fracture'>;
+export type EditorSnapshot = {
+ impacts: ImpactSnapshot[]; selected: number | null; nextId: number;
+ material: GlassMaterialSettings; materialPreset?: GlassMaterialPreset; shards: ShardImageSettings;
 };
 export const PRESETS: Record<StylePreset, Readonly<ImpactParams>> = {
   realistic: Object.freeze({ ...DEFAULT_CRACK_PARAMS, radialCount: 16, complexity: 75,
@@ -48,6 +55,22 @@ export class EditorState {
   get impacts(): readonly Impact[] { return this.items; }
   get selectedId(): number | null { return this.selected; }
   get active(): Impact | undefined { return this.items.find(impact => impact.id === this.selected); }
+
+  snapshot(): EditorSnapshot {
+    return structuredClone({impacts:this.items.map(({pattern: _pattern,fracture: _fracture,...values})=>values),
+      selected:this.selected,nextId:this.nextId,material:this.glass.settings,materialPreset:this.glass.preset,shards:this.shards.settings});
+  }
+  /** Internal history snapshots only. Prepare all geometry before replacing the point list. */
+  restore(snapshot: EditorSnapshot): void {
+    const data=structuredClone(snapshot);
+    const restored=data.impacts.map(impact=>{
+      const pattern=generateCracks(this.size,impact.origin,impact.seed,impact.params);
+      return {...impact,pattern,fracture:generateFractureSurface(pattern,this.size,impact.surface?.widthPercent??0,impact.surface?.chipDensity??0)};
+    });
+    if(data.materialPreset)this.glass.applyPreset(data.materialPreset);else this.glass.update(data.material);
+    this.shards.update(data.shards);
+    this.items=restored;this.selected=data.selected;this.nextId=data.nextId;
+  }
 
   select(id: number): void {
     if (this.items.some(impact => impact.id === id)) this.selected = id;

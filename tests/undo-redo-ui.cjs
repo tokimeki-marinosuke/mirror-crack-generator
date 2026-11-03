@@ -1,0 +1,33 @@
+const{chromium}=require('playwright');const assert=require('node:assert/strict');const fs=require('node:fs/promises');const path=require('node:path');
+(async()=>{const browser=await chromium.launch({executablePath:process.env.CHROMIUM_PATH||'/usr/bin/chromium',args:['--no-sandbox']});try{
+ const p=await browser.newPage({viewport:{width:1500,height:1100}}),errors=[];p.on('pageerror',e=>errors.push(e.message));await p.goto(process.env.EDITOR_URL||'http://127.0.0.1:5173/mirror-crack-generator/');
+ const undo=p.locator('#undo'),redo=p.locator('#redo'),c=p.locator('canvas');assert.equal(await undo.isDisabled(),true);assert.equal(await redo.isDisabled(),true);
+ await p.locator('#image-file').setInputFiles(path.resolve('docs/samples/light.png'));await p.waitForFunction(()=>!document.querySelector('[data-mode=add]').disabled);const r=await c.boundingBox();
+ const pixels=()=>c.evaluate(c=>c.toDataURL());const empty=await pixels();
+ await c.click({position:{x:r.width*.4,y:r.height*.45}});const one=await pixels();await undo.click();assert.equal(await pixels(),empty);assert.equal(await redo.isDisabled(),false);await redo.click();assert.equal(await pixels(),one);
+ await c.click({position:{x:r.width*.7,y:r.height*.6}});const two=await pixels(),coords=await p.locator('.coordinates').textContent();
+ await p.locator('#delete-impact').click();await undo.click();assert.equal(await pixels(),two);assert.equal(await p.locator('#impact-list').inputValue(),'2');await redo.click();assert.equal(await p.locator('#impact-list option').count(),1);await undo.click();
+ // A drag with multiple frames is one edit; cancellation leaves no drag entry.
+ const marker={x:r.x+r.width*.7,y:r.y+r.height*.6};await p.mouse.move(marker.x,marker.y);await p.mouse.down();await p.mouse.move(marker.x-30,marker.y-20,{steps:5});await p.mouse.move(marker.x-60,marker.y-40,{steps:5});await p.mouse.up();const moved=await pixels();assert.notEqual(moved,two);await undo.click();assert.equal(await pixels(),two);assert.equal(await p.locator('.coordinates').textContent(),coords);await redo.click();assert.equal(await pixels(),moved);await undo.click();
+ await p.mouse.move(marker.x,marker.y);await p.mouse.down();await p.mouse.move(marker.x-50,marker.y-20,{steps:3});await c.dispatchEvent('pointercancel',{pointerId:1});await p.mouse.up();assert.equal(await pixels(),two);
+ for(const group of ['material','shard','point'])await p.locator('#'+group+'-advanced summary').click();
+ // Multiple animation-frame updates from one slider gesture must merge.
+ await p.evaluate(async()=>{const s=document.querySelector('#lineWidth');for(const v of [60,70,80]){s.value=String(v);s.dispatchEvent(new Event('input',{bubbles:true}));await new Promise(requestAnimationFrame);}s.dispatchEvent(new Event('change',{bubbles:true}));});const wide=await pixels();assert.notEqual(wide,two);await undo.click();assert.equal(await pixels(),two);await redo.click();assert.equal(await pixels(),wide);
+ await p.locator('#material-preset').selectOption('real');const real=await pixels();await undo.click();assert.equal(await pixels(),wide);assert.equal(await p.locator('#material-preset').inputValue(),'cinematic');await redo.click();assert.equal(await pixels(),real);
+ await p.locator('#shard-preset').selectOption('none');const still=await pixels();await undo.click();assert.equal(await pixels(),real);await redo.click();assert.equal(await pixels(),still);
+ const save=async(mode)=>{const waiting=p.waitForEvent('download');await p.locator('#export-'+mode).click();const d=await waiting;assert.equal(await d.failure(),null);return(await fs.readFile(await d.path())).toString('base64');};const composite=await save('composite'),cracks=await save('cracks');
+ await p.locator('#regenerate').click();assert.equal(await p.locator('#seed').inputValue(),'2');await undo.click();assert.equal(await save('composite'),composite);assert.equal(await save('cracks'),cracks);await redo.click();assert.equal(await p.locator('#seed').inputValue(),'2');
+ const beforeReset=await pixels();await p.locator('#reset-settings').click();const reset=await pixels();assert.notEqual(beforeReset,reset);await undo.click();assert.equal(await pixels(),beforeReset);await redo.click();assert.equal(await pixels(),reset);
+ // Keyboard works outside text editing; text fields retain their native undo.
+ await p.locator('#undo').focus();await p.keyboard.press('Control+z');assert.equal(await pixels(),beforeReset);await p.keyboard.press('Control+Shift+z');assert.equal(await pixels(),reset);await p.keyboard.press('Meta+z');assert.equal(await pixels(),beforeReset);await p.keyboard.press('Control+y');assert.equal(await pixels(),reset);
+ await p.locator('#material-name').fill('text only');await p.keyboard.press('Control+z');assert.equal(await pixels(),reset);assert.equal(await undo.isDisabled(),false);
+ // An edit after undo discards redo, including pending slider work before undo.
+ await undo.click();assert.equal(await redo.isDisabled(),false);await p.evaluate(()=>{const s=document.querySelector('#material-thickness');s.value='90';s.dispatchEvent(new Event('input',{bubbles:true}));document.querySelector('#undo').click();});assert.equal(await pixels(),beforeReset);await redo.click();assert.equal(await p.locator('#material-thickness').inputValue(),'90');
+ await undo.click();await p.locator('#preset').selectOption('anime');assert.equal(await redo.isDisabled(),true);
+ // Selection and preset-library storage do not create editor history.
+ const anime=await pixels();await p.locator('#point-name').fill('saved');await p.locator('#point-save').click();await undo.click();assert.notEqual(await pixels(),anime);assert.equal(await p.locator('#point-saved option').count(),2);
+ // Failed image replacement preserves history; successful replacement clears it.
+ await p.locator('#image-file').setInputFiles({name:'invalid.txt',mimeType:'text/plain',buffer:Buffer.from('invalid')});await p.waitForFunction(()=>document.querySelector('.status').textContent.includes('PNG'));assert.equal(await undo.isDisabled(),false);
+ await p.locator('#image-file').setInputFiles(path.resolve('docs/samples/dark.png'));await p.waitForFunction(()=>document.querySelector('.metadata').textContent.includes('dark.png'));assert.equal(await undo.isDisabled(),true);assert.equal(await redo.isDisabled(),true);
+ assert.deepEqual(errors,[]);console.log('Undo/redo UI: add/delete/drag/cancel, grouped sliders, materials/shards/seed/reset, exact preview and both PNG restoration, shortcuts/text exclusion, pending inputs, redo branch and image replacement passed.');
+}finally{await browser.close()}})().catch(e=>{console.error(e);process.exitCode=1});
